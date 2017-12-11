@@ -111,7 +111,7 @@ architecture arch of trigger is
 	counter1280: process (clk, reset)
 		begin
         if (clk'event and clk = '1') then
-            if (reset = '0') then
+            if (reset = '0' or count_1280 = 1280) then
                 count_1280_next <= (others => '0');
             else
                 -- it resets when the line ends, if not it increases in 1
@@ -127,26 +127,34 @@ architecture arch of trigger is
 	-- Comparison process trigger decition
 	comparison: process(clk, reset)
 	begin
-		if(clk'event and clk='1') then
+		if(clk'event and clk = '1') then
 			if(reset = '0') then
 				last_data1 <= (others => '0');
-				counter_1280 <= 0;
+				process_read <= '0';
 			else
-				if(sample_ready = '1' and vsync = '0') then
-					if(data1(11 downto 3) > actual_trigger) then
-						
-					elsif(data1(11 downto 3) = actual_trigger) then
-						if(last_data1 < data1(11 downto 8) and trigger_slope = '1') then
-						
-						elsif(last_data1 > data1(11 downto 8) and trigger_slope = '0') then
-						
+				if(sample_ready = '1' and ongoing = '1') then
+					if(trigger_slope = '0') then
+						if((data1(11 downto 3) = actual_trigger) and (last_data1 > data1(11 downto 8))) then
+							data1_value <= data1;
+							process_read <= '1';
+						end if;
+					elsif(trigger_slope = '1') then
+						if((data1(11 downto 3) = actual_trigger) and (last_data1 < data1(11 downto 8))) then
+							data_value <= data1;
+							process_read <= '1';
+						end if;
+					elsif(process_read = '1') then
+						data_value <= data1;
+						if (count_1280 = 1280) then
+							process_read <= '0';
 						end if;
 					end if;
 					last_data1 <= data1(11 downto 8);
 				end if;
 			end if;
-			
 		end if;
 	end process;
+
+	count_1280 <= count_1280_next;
 	
 end arch;
