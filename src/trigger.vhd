@@ -35,6 +35,7 @@ architecture arch of trigger is
 	signal trigger_level_reg: std_logic_vector(8 downto 0);
 
 	signal count_1280, count_1280_next: unsigned(10 downto 0);
+	signal ongoing: std_logic;
 	
 	comparison: process(clk, reset)
 	begin
@@ -74,7 +75,7 @@ architecture arch of trigger is
 			if(reset = '0') then
 				actual_trigger = "100000000";
 				-- 0 negative, 1 positive
-				trigger_slope <= '0';
+				trigger_slope <= '1';
 			else
 				-- falling edge detection
 				if(trigger_up_sync3 = '1' and trigger_up_sync2 = '0') then
@@ -90,7 +91,23 @@ architecture arch of trigger is
 		end if;
 	end process;
 
-	-- 1280 counter, conversion time for memory locations
+	-- Conversion var status
+	ongoing_process: process(clk, reset)
+		begin
+		if (clk'event and clk = '1') then
+			if (reset = '0') then
+                ongoing <= '0';
+            else
+            	if (vsync = '0' and vsync_reg = '1') then
+            		ongoing <= '1'
+            	elsif (counter1280 = 1280) then
+            		ongoing <= '0'
+            	end if;
+            end if;
+        end if;
+	end process;
+
+	-- 1280 counter, conversion time for memory locations¡
 	counter1280: process (clk, reset)
 		begin
         if (clk'event and clk = '1') then
@@ -98,7 +115,7 @@ architecture arch of trigger is
                 count_1280_next <= (others => '0');
             else
                 -- it resets when the line ends, if not it increases in 1
-                if (sample_ready = '1') then
+                if (sample_ready = '1' and ongoing = '1') then
                     count_1280_next <= (others => '0');
                 else
                     count_1280_next <= count_1280 + 1;
@@ -107,6 +124,7 @@ architecture arch of trigger is
         end if;
 	end process;
 	
+	-- Comparison process trigger decition
 	comparison: process(clk, reset)
 	begin
 		if(clk'event and clk='1') then
