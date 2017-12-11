@@ -124,7 +124,7 @@ architecture arch of trigger is
         end if;
 	end process;
 	
-	-- Comparison process trigger decition
+	-- Comparison process trigger decision
 	comparison: process(clk, reset)
 	begin
 		if(clk'event and clk = '1') then
@@ -152,6 +152,18 @@ architecture arch of trigger is
 					last_data1 <= data1(11 downto 8);
 				end if;
 			end if;
+		end if;
+	end process;
+
+	-- Write to memory process
+	writeToMemory: process(clk, reset)
+	begin
+		if(clk'event and clk = '1') then
+			if(reset = '0') then
+
+			end if;
+			else
+				
 		end if;
 	end process;
 
