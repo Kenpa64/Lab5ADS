@@ -161,6 +161,7 @@ architecture arch of trigger is
 	begin
 		if(clk'event and clk = '1') then
 			if(reset = '0') then
+<<<<<<< HEAD
 				we <= '0';
 				addr_in <= (others => '0');
 				data_in <= (others => '0');
@@ -171,6 +172,11 @@ architecture arch of trigger is
 					data_in <= data1_value;
 				end if;
 			end if;
+=======
+
+			end if;
+			else
+>>>>>>> master
 				
 		end if;
 	end process;
