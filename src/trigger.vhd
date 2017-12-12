@@ -15,8 +15,8 @@ port(
 	trigger_n_p:	in std_logic;
 	data1: in std_logic_vector(11 downto 0);
 	we:	out std_logic;
-	addr_in:	out std_logic_vector(4 downto 0);
-	data_in:	out std_logic_vector(31 downto 0);
+	addr_in:	out std_logic_vector(10 downto 0);
+	data_in:	out std_logic_vector(11 downto 0);
 	trigger_level:	out std_logic_vector(8 downto 0)
 
 	);
@@ -34,6 +34,7 @@ architecture arch of trigger is
 	signal trigger_n_p_sync, trigger_n_p_sync2, trigger_n_p_sync3: std_logic;
 	signal trigger_level_reg: std_logic_vector(8 downto 0);
 
+	signal data1_value : std_logic_vector(11 downto 0);
 	signal count_1280, count_1280_next: unsigned(10 downto 0);
 	signal ongoing: std_logic;
 	
@@ -115,7 +116,7 @@ architecture arch of trigger is
                 count_1280_next <= (others => '0');
             else
                 -- it resets when the line ends, if not it increases in 1
-                if (sample_ready = '1' and ongoing = '1') then
+                if (sample_ready = '1' and process_read = '1') then
                     count_1280_next <= (others => '0');
                 else
                     count_1280_next <= count_1280 + 1;
@@ -132,7 +133,7 @@ architecture arch of trigger is
 				last_data1 <= (others => '0');
 				process_read <= '0';
 			else
-				if(sample_ready = '1' and ongoing = '1') then
+				if(sample_ready = '1' and process_read = '1' and ongoing = '1') then
 					if(trigger_slope = '0') then
 						if((data1(11 downto 3) = actual_trigger) and (last_data1 > data1(11 downto 8))) then
 							data1_value <= data1;
@@ -140,11 +141,11 @@ architecture arch of trigger is
 						end if;
 					elsif(trigger_slope = '1') then
 						if((data1(11 downto 3) = actual_trigger) and (last_data1 < data1(11 downto 8))) then
-							data_value <= data1;
+							data1_value <= data1;
 							process_read <= '1';
 						end if;
 					elsif(process_read = '1') then
-						data_value <= data1;
+						data1_value <= data1;
 						if (count_1280 = 1280) then
 							process_read <= '0';
 						end if;
@@ -160,9 +161,16 @@ architecture arch of trigger is
 	begin
 		if(clk'event and clk = '1') then
 			if(reset = '0') then
-
-			end if;
+				we <= '0';
+				addr_in <= (others => '0');
+				data_in <= (others => '0');
 			else
+				if(sample_ready = '1' and process_read = '1') then
+					we <= '1';
+					addr_in <= counter1280-1;
+					data_in <= data1_value;
+				end if;
+			end if;
 				
 		end if;
 	end process;
