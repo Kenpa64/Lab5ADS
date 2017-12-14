@@ -16,6 +16,7 @@ port(
 	);
 end ADC_control;
 
+
 architecture arch of ADC_control is
 	constant DATALEN: integer := 12;	-- Data length
 

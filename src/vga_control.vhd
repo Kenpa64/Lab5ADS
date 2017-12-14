@@ -17,6 +17,7 @@ port(
 	);
 end vga_control;
 
+
 architecture arch of vga_control is
 	constant PPL: integer:= 1280;	-- pixels per line
 	constant HFP: integer:= 48;		-- hsync front porch
