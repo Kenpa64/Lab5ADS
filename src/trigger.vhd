@@ -78,7 +78,6 @@ architecture arch of trigger is
 				actual_trigger <= "100000000";
 				-- 0 negative, 1 positive
 				trigger_slope <= '1';
-				trigger_level <= "100000000";
 			else
 				-- falling edge detection
 				-- TODO: edge detection well done
@@ -168,7 +167,7 @@ architecture arch of trigger is
 			else
 				if(sample_ready = '1' and ongoing = '1' and process_read = '1') then
 					we <= '1';
-					addr_in <= count_1280 - 1;
+					addr_in <= count_1280;
 					data_in <= data1_value;
 				end if;
 			end if;
