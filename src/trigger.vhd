@@ -134,17 +134,19 @@ architecture arch of trigger is
 				process_read <= '0';
 			else
 				if(sample_ready = '1' and ongoing = '1') then
-					if(trigger_slope = '0') then
-						if((data1(11 downto 3) = actual_trigger) and (last_data1 > data1(11 downto 8))) then
-							data1_value <= data1;
-							process_read <= '1';
+					if(process_read = '0') then
+						if(trigger_slope = '0') then
+							if((data1(11 downto 3) = actual_trigger) and (last_data1 > data1(11 downto 8))) then
+								data1_value <= data1;
+								process_read <= '1';
+							end if;
+						elsif(trigger_slope = '1') then
+							if((data1(11 downto 3) = actual_trigger) and (last_data1 < data1(11 downto 8))) then
+								data1_value <= data1;
+								process_read <= '1';
+							end if;
 						end if;
-					elsif(trigger_slope = '1') then
-						if((data1(11 downto 3) = actual_trigger) and (last_data1 < data1(11 downto 8))) then
-							data1_value <= data1;
-							process_read <= '1';
-						end if;
-					elsif(process_read = '1') then
+					else
 						data1_value <= data1;
 						if (count_1280 = 1280) then
 							process_read <= '0';
