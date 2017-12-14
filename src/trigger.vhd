@@ -27,7 +27,7 @@ architecture arch of trigger is
 	--constant default_value: integer:= 256; --100000000, I don't know if we could not use this signal
 	signal actual_trigger: std_logic_vector(8 downto 0):= "100000000";
 	signal last_data1: std_logic_vector(3 downto 0);
-	constant trigger_unit: integer:= 16;
+	signal trigger_unit: std_logic_vector(4 downto 0):= "10000";
 	signal trigger_slope: std_logic;
 	--registers init
 	signal trigger_up_sync, trigger_up_sync2, trigger_up_sync3: std_logic;

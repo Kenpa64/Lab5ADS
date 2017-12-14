@@ -6,7 +6,6 @@ use ieee.std_logic_unsigned.all;
 
 entity vga_control is
 port(
-	mode:	in std_logic;
 	clk:	in std_logic;
 	reset:	in std_logic;
 	vsync:	out std_logic;
@@ -126,31 +125,31 @@ architecture arch of vga_control is
 				output_colour <= (others => '0');
 			else
                 -- "vertical" mode
-				if (mode = '0') then
-                    -- when the counters are inside the active area, the output must be the colour counter, if not is forced to zero
-					if (h_screen = '1' and v_screen = '1') then
-						output_colour <= '0' & count_col(10 downto 0);
-					else
-						output_colour <= (others => '0');
-					end if;
-                -- "horizontal" mode
-				elsif (mode = '1') then
-                    -- when the counters are outside the active area, the output must be forced to zero
-					if (h_screen = '0' or v_screen = '0') then
-						output_colour <= (others => '0');
-                    -- if the line counter is inside the first 1/3 of the active area, the output will be forced to blue
-					elsif (VBP+342 > count_1066) then
-						output_colour <= "000000001111";
-                    -- if the line counter is between the second 1/3 of the active area, the output will be forced to green
-					elsif (VBP+682 > count_1066) then
-						output_colour <= "000011110000";
-                    -- if the line counter is between the last 1/3 of active area, the output will be forced to red
-					elsif (VBP+1024 > count_1066) then
-						output_colour <= "111100000000";
-					else
-						output_colour <= (others => '0');
-					end if;
-				end if;
+				--if (mode = '0') then
+    --                -- when the counters are inside the active area, the output must be the colour counter, if not is forced to zero
+				--	if (h_screen = '1' and v_screen = '1') then
+				--		output_colour <= '0' & count_col(10 downto 0);
+				--	else
+				--		output_colour <= (others => '0');
+				--	end if;
+    --            -- "horizontal" mode
+				--elsif (mode = '1') then
+    --                -- when the counters are outside the active area, the output must be forced to zero
+				--	if (h_screen = '0' or v_screen = '0') then
+				--		output_colour <= (others => '0');
+    --                -- if the line counter is inside the first 1/3 of the active area, the output will be forced to blue
+				--	elsif (VBP+342 > count_1066) then
+				--		output_colour <= "000000001111";
+    --                -- if the line counter is between the second 1/3 of the active area, the output will be forced to green
+				--	elsif (VBP+682 > count_1066) then
+				--		output_colour <= "000011110000";
+    --                -- if the line counter is between the last 1/3 of active area, the output will be forced to red
+				--	elsif (VBP+1024 > count_1066) then
+				--		output_colour <= "111100000000";
+				--	else
+				--		output_colour <= (others => '0');
+				--	end if;
+				--end if;
 			end if;		
         end if;
 	end process;
