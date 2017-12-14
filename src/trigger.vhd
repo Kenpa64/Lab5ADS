@@ -63,6 +63,9 @@ architecture arch of trigger is
 				
 				trigger_level_reg <= actual_trigger;
 				trigger_level <= trigger_level_reg;
+
+				-- 2 registers?
+				vsync_reg <= vsync;
 			end if;
 		end if;
 	end process;
@@ -75,8 +78,10 @@ architecture arch of trigger is
 				actual_trigger <= "100000000";
 				-- 0 negative, 1 positive
 				trigger_slope <= '1';
+				trigger_level <= "100000000";
 			else
 				-- falling edge detection
+				-- TODO: edge detection well done
 				if(trigger_up_sync3 = '1' and trigger_up_sync2 = '0') then
 					actual_trigger <= actual_trigger + trigger_unit;
 				elsif (trigger_down_sync3 = '1' and trigger_down_sync2 = '0') then
