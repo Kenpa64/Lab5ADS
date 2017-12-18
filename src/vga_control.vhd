@@ -6,13 +6,16 @@ use ieee.std_logic_unsigned.all;
 
 entity vga_control is
 port(
+	data_out: in std_logic_vector(11 downto 0);
+	trigger_level: in std_logic_vector(8 downto 0);
 	clk:	in std_logic;
 	reset:	in std_logic;
 	vsync:	out std_logic;
 	hsync:	out std_logic;
 	red:	out std_logic_vector(3 downto 0);
 	green:	out std_logic_vector(3 downto 0);
-	blue:	out std_logic_vector(3 downto 0)
+	blue:	out std_logic_vector(3 downto 0);
+	addr_out: out std_logic_vector(10 downto 0)
 	);
 end vga_control;
 
@@ -28,11 +31,9 @@ architecture arch of vga_control is
 	constant VRE: integer:= 3;		-- vsync retrace
 
 	-- counter variables
-	signal count_1688, count_1688_next: unsigned(10 downto 0);
-	signal count_1066, count_1066_next: unsigned(10 downto 0);
+	signal count_1688, count_1688_next: std_logic_vector(10 downto 0);
+	signal count_1066, count_1066_next: std_logic_vector(10 downto 0);
     
-    -- pixel counter
-	signal count_col, count_col_next: std_logic_vector(11 downto 0);
 
 	-- control variables
 	signal h_end, v_end, h_screen, v_screen: std_logic;
@@ -42,6 +43,11 @@ architecture arch of vga_control is
 	signal hsync_reg, hsync_reg2: std_logic;
     
 	signal output_colour: std_logic_vector(11 downto 0);
+
+	signal addr_out_reg, addr_out_reg2 : std_logic_vector(10 downto 0);
+	signal  data_out_reg, data_out_reg2 : std_logic_vector(11 downto 0);
+	signal trigger_level_reg, trigger_level_reg2 : std_logic_vector(8 downto 0);
+	signal data_to_vga, data_to_vga_reg, data_to_vga_reg2 : std_logic_vector(11 downto 0);
 
 	begin
     
@@ -53,30 +59,27 @@ architecture arch of vga_control is
                 -- All the signals are reseted in the processes below
             else
                 -- Sync output control signals
-                vsync_reg2 <= vsync_reg;
-                vsync <= vsync_reg2;
-                hsync_reg2 <= hsync_reg;
-                hsync <= hsync_reg2;
+				--vsync_reg2 <= vsync_reg;
+    --            vsync <= vsync_reg2;
+    --            hsync_reg2 <= hsync_reg;
+    --            hsync <= hsync_reg2;
+
+    			vsync <= vsync_reg;
+    			hsync <= hsync_reg;
 
                 --Sync colours
                 red <= output_colour(11 downto 8);
                 green <= output_colour(7 downto 4);
                 blue <= output_colour(3 downto 0);
-            end if;
-        end if;
-		
-	end process;
-	
-	-- colour counter process, clock time
-	countercol: process (clk, reset)
-		begin
-        if (clk'event and clk = '1') then
-            if (reset = '1' or h_end =	 '1') then
-                count_col_next <= (others => '0');
-            else
-                if(h_screen = '1' and v_screen = '1') then
-                    count_col_next <= count_col + 1;
-                end if;
+
+                data_out_reg <= data_out;
+                data_out_reg2 <= data_out_reg;
+
+                --data_to_vga_reg <= data_to_vga;
+                --data_to_vga_reg2 <= data_to_vga_reg;
+
+                trigger_level_reg <= trigger_level;
+                trigger_level_reg2 <=trigger_level_reg;
             end if;
         end if;
 		
@@ -123,33 +126,31 @@ architecture arch of vga_control is
 			if (reset = '1' or v_end = '1')  then 
                 -- force the output colour to all '0' when the frame ends or the system resets
 				output_colour <= (others => '0');
+				addr_out <= (others => '0');
 			else
-                -- "vertical" mode
-				--if (mode = '0') then
-    --                -- when the counters are inside the active area, the output must be the colour counter, if not is forced to zero
-				--	if (h_screen = '1' and v_screen = '1') then
-				--		output_colour <= '0' & count_col(10 downto 0);
-				--	else
-				--		output_colour <= (others => '0');
-				--	end if;
-    --            -- "horizontal" mode
-				--elsif (mode = '1') then
-    --                -- when the counters are outside the active area, the output must be forced to zero
-				--	if (h_screen = '0' or v_screen = '0') then
-				--		output_colour <= (others => '0');
-    --                -- if the line counter is inside the first 1/3 of the active area, the output will be forced to blue
-				--	elsif (VBP+342 > count_1066) then
-				--		output_colour <= "000000001111";
-    --                -- if the line counter is between the second 1/3 of the active area, the output will be forced to green
-				--	elsif (VBP+682 > count_1066) then
-				--		output_colour <= "000011110000";
-    --                -- if the line counter is between the last 1/3 of active area, the output will be forced to red
-				--	elsif (VBP+1024 > count_1066) then
-				--		output_colour <= "111100000000";
-				--	else
-				--		output_colour <= (others => '0');
-				--	end if;
-				--end if;
+				if(v_screen ='1') then
+					if(counter1066(8 downto 0) = trigger_level_reg2 && counter1688 - HBP <= 20) then
+						if(counter1688 >=HBP) then
+							output_colour(3 downto 0) <= (others => '1');
+						else 
+							output_colour <= (others =>_'0');
+						end if;
+						-- 3 because 1 clock in advance + 2 reg
+					elsif(count_1688 > HBP-3 && count_1688 < HBP-1) then
+						addr_out <= count_1688-HBP-3; 
+						output_colour <= (others => '0');
+					elsif(count_1688 = HBP -1) then
+						data_to_vga <= data_out_reg2;
+						addr_out <= count_1688-HBP-3; 
+					elsif(count_1688 > HBP-3) then
+						data_to_vga <= data_out_reg2;
+						if(data_to_vga = (('0'&counter1066) - VBP) then
+							output_colour <= "111100001111";
+						else 
+							output_colour <= (others => '0');
+						end if;
+					end if;
+				end if;
 			end if;		
         end if;
 	end process;
@@ -161,7 +162,6 @@ architecture arch of vga_control is
     -- set the counter values to the actual ones
 	count_1688 <= count_1688_next;
 	count_1066 <= count_1066_next;
-	count_col <= count_col_next;
 	
     -- set these internal signals to '1' when a line or a frame is ended
 	h_end <= '1' when count_1688 = (PPL + HFP + HBP + HRE - 1) else '0';
@@ -170,5 +170,4 @@ architecture arch of vga_control is
     -- set internal flags to '1' when the counters are inside the active area
 	h_screen <= '1' when (count_1688 > HBP and count_1688 <= HBP+1280) else '0';
 	v_screen <= '1' when (count_1066 > VBP and count_1066 <= VBP+1024) else '0';
-
 end arch;
