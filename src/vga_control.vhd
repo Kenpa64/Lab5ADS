@@ -39,15 +39,13 @@ architecture arch of vga_control is
 	signal h_end, v_end, h_screen, v_screen: std_logic;
     
     -- output register sync signals
-	signal vsync_reg, vsync_reg2: std_logic;
-	signal hsync_reg, hsync_reg2: std_logic;
+	signal vsync_reg: std_logic;
+	signal hsync_reg: std_logic;
     
 	signal output_colour: std_logic_vector(11 downto 0);
 
-	signal addr_out_reg, addr_out_reg2 : std_logic_vector(10 downto 0);
-	signal  data_out_reg, data_out_reg2 : std_logic_vector(11 downto 0);
 	signal trigger_level_reg, trigger_level_reg2 : std_logic_vector(8 downto 0);
-	signal data_to_vga, data_to_vga_reg, data_to_vga_reg2 : std_logic_vector(11 downto 0);
+	signal data_to_vga: std_logic_vector(11 downto 0);
 
 	begin
     
@@ -58,11 +56,6 @@ architecture arch of vga_control is
             if (reset = '1') then	
                 -- All the signals are reseted in the processes below
             else
-                -- Sync output control signals
-				--vsync_reg2 <= vsync_reg;
-    --            vsync <= vsync_reg2;
-    --            hsync_reg2 <= hsync_reg;
-    --            hsync <= hsync_reg2;
 
     			vsync <= vsync_reg;
     			hsync <= hsync_reg;
@@ -72,11 +65,8 @@ architecture arch of vga_control is
                 green <= output_colour(7 downto 4);
                 blue <= output_colour(3 downto 0);
 
-                data_out_reg <= data_out;
-                data_out_reg2 <= data_out_reg;
-
-                --data_to_vga_reg <= data_to_vga;
-                --data_to_vga_reg2 <= data_to_vga_reg;
+                --data_out_reg <= data_out;
+                --data_out_reg2 <= data_out_reg;
 
                 trigger_level_reg <= trigger_level;
                 trigger_level_reg2 <=trigger_level_reg;
@@ -129,26 +119,39 @@ architecture arch of vga_control is
 				addr_out <= (others => '0');
 			else
 				if(v_screen ='1') then
-					if(counter1066(8 downto 0) = trigger_level_reg2 && counter1688 - HBP <= 20) then
-						if(counter1688 >=HBP) then
+					if(('0'&counter1066) - VBP = trigger_level_reg2 and counter1688 - HBP <= 20) then
+						if(counter1688 >= HBP) then
 							output_colour(3 downto 0) <= (others => '1');
-						else 
-							output_colour <= (others =>_'0');
-						end if;
-						-- 3 because 1 clock in advance + 2 reg
-					elsif(count_1688 > HBP-3 && count_1688 < HBP-1) then
-						addr_out <= count_1688-HBP-3; 
-						output_colour <= (others => '0');
-					elsif(count_1688 = HBP -1) then
-						data_to_vga <= data_out_reg2;
-						addr_out <= count_1688-HBP-3; 
-					elsif(count_1688 > HBP-3) then
-						data_to_vga <= data_out_reg2;
-						if(data_to_vga = (('0'&counter1066) - VBP) then
-							output_colour <= "111100001111";
 						else 
 							output_colour <= (others => '0');
 						end if;
+						-- 3 because 1 clock in advance + 2 reg
+					--elsif(count_1688 > HBP - 3 and count_1688 < HBP - 1) then
+					--	addr_out <= count_1688-HBP-3; 
+					--	output_colour <= (others => '0');
+					elsif(count_1688 >= HBP) then
+						if(count_1688 < 1280) then
+							addr_out <= counter1688 - HBP + 1;
+						end if;
+						if count_1688 > HBP + 2 then
+							data_to_vga <= data_out;
+						end if;
+						if(data_to_vga = (('0'&counter1066) - VBP) then
+							output_colour <= "111100001111";
+						else
+							output_colour <= (others => '0');
+					    end if;
+					--elsif(count_1688 = HBP - 1) then
+					--	data_to_vga <= data_out;
+					--	addr_out <= count_1688-HBP-3; 
+					--elsif(count_1688 > HBP-3) then
+					--	data_to_vga <= data_out;
+					--	if(data_to_vga = (('0'&counter1066) - VBP) then
+					--		output_colour <= "111100001111";
+					--	else 
+					--		output_colour <= (others => '0');
+					--  end if;
+
 					end if;
 				end if;
 			end if;		
