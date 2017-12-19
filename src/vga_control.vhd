@@ -118,7 +118,7 @@ architecture arch of vga_control is
 				output_colour <= (others => '0');
 				addr_out <= (others => '0');
 			else
-				if(v_screen ='1') then
+				if(v_screen = '1') then
 					if(('0'&counter1066) - VBP = trigger_level_reg2 and counter1688 - HBP <= 20) then
 						if(counter1688 >= HBP) then
 							output_colour(3 downto 0) <= (others => '1');
@@ -133,10 +133,12 @@ architecture arch of vga_control is
 						if(count_1688 < 1280) then
 							addr_out <= counter1688 - HBP + 1;
 						end if;
-						if count_1688 > HBP + 2 then
+						if(count_1688 > HBP + 1280) then 
+							data_to_vga <= (others <= '0')
+						elsif(count_1688 > HBP + 2) then
 							data_to_vga <= data_out;
 						end if;
-						if(data_to_vga = (('0'&counter1066) - VBP) then
+						if(data_to_vga(11 downto 3) = counter1066(9 downto 0) - VBP) then
 							output_colour <= "111100001111";
 						else
 							output_colour <= (others => '0');
