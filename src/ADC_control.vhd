@@ -12,7 +12,7 @@ port(
 	sdata2:	in std_logic;
 	ncs:	out std_logic;
 	sclk:	out std_logic;
-	leds:	out std_logic_vector(7 downto 0)
+	sample_ready:	out std_logic
 	);
 end ADC_control;
 
@@ -196,7 +196,7 @@ architecture arch of ADC_control is
 	-- uptading the old counter values to the current ones
 	sclk_count <= sclk_count_next;
 	count_17 <= count_17_next;
-	
+	sample_ready <= lab5var;
 	-- creation of sclk, when the sclk_counter is lower than 3 it will be '1', else '0'
 	sclk_reg <= '1' when (sclk_count < 3) else '0';
 	
