@@ -61,8 +61,7 @@ architecture arch of trigger is
 				trigger_n_p_sync2 <= trigger_n_p_sync;
 				trigger_n_p_sync3 <= trigger_n_p_sync2;
 				
-				trigger_level_reg <= actual_trigger;
-				trigger_level <= trigger_level_reg;
+				trigger_level <= actual_trigger;
 
 				-- 2 registers?
 				vsync_reg <= vsync;

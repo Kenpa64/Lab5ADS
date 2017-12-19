@@ -44,7 +44,6 @@ architecture arch of vga_control is
     
 	signal output_colour: std_logic_vector(11 downto 0);
 
-	signal trigger_level_reg, trigger_level_reg2 : std_logic_vector(8 downto 0);
 	signal data_to_vga: std_logic_vector(11 downto 0);
 
 	begin
@@ -65,11 +64,6 @@ architecture arch of vga_control is
                 green <= output_colour(7 downto 4);
                 blue <= output_colour(3 downto 0);
 
-                --data_out_reg <= data_out;
-                --data_out_reg2 <= data_out_reg;
-
-                trigger_level_reg <= trigger_level;
-                trigger_level_reg2 <=trigger_level_reg;
             end if;
         end if;
 		
@@ -113,29 +107,27 @@ architecture arch of vga_control is
 	signalgen: process (clk, reset)
 		begin
         if(clk'event and clk = '1') then
+			--if (reset = '1' or v_end = '1')  then 
 			if (reset = '1' or v_end = '1')  then 
                 -- force the output colour to all '0' when the frame ends or the system resets
 				output_colour <= (others => '0');
 				addr_out <= (others => '0');
+				data_to_vga <= (others => '0');
 			else
 				if(v_screen = '1') then
-					if(('0'&counter1066) - VBP = trigger_level_reg2 and counter1688 - HBP <= 20) then
+					if(('0'&counter1066) - VBP = trigger_level and counter1688 - HBP < 20) then
 						if(counter1688 >= HBP) then
 							output_colour(3 downto 0) <= (others => '1');
 						else 
 							output_colour <= (others => '0');
 						end if;
-						-- 3 because 1 clock in advance + 2 reg
-					--elsif(count_1688 > HBP - 3 and count_1688 < HBP - 1) then
-					--	addr_out <= count_1688-HBP-3; 
-					--	output_colour <= (others => '0');
 					elsif(count_1688 >= HBP) then
-						if(count_1688 < 1280) then
+						if(count_1688 < HBP + 1280 - 1) then
 							addr_out <= counter1688 - HBP + 1;
 						end if;
 						if(count_1688 > HBP + 1280) then 
 							data_to_vga <= (others <= '0')
-						elsif(count_1688 > HBP + 2) then
+						elsif(count_1688 > HBP) then
 							data_to_vga <= data_out;
 						end if;
 						if(data_to_vga(11 downto 3) = counter1066(9 downto 0) - VBP) then
@@ -143,17 +135,6 @@ architecture arch of vga_control is
 						else
 							output_colour <= (others => '0');
 					    end if;
-					--elsif(count_1688 = HBP - 1) then
-					--	data_to_vga <= data_out;
-					--	addr_out <= count_1688-HBP-3; 
-					--elsif(count_1688 > HBP-3) then
-					--	data_to_vga <= data_out;
-					--	if(data_to_vga = (('0'&counter1066) - VBP) then
-					--		output_colour <= "111100001111";
-					--	else 
-					--		output_colour <= (others => '0');
-					--  end if;
-
 					end if;
 				end if;
 			end if;		
