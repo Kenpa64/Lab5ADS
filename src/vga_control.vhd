@@ -140,6 +140,7 @@ architecture arch of vga_control is
 			end if;		
         end if;
 	end process;
+	
 
     -- set hsync and vsync signals to '1' when any counter is on retrace
 	hsync_reg <= '1' when count_1688 < (PPL+HFP+HBP) else '0';
