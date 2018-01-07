@@ -135,7 +135,7 @@ architecture arch of vga_control is
 							data_to_vga <= data_out;
 						end if;
 						if(data_to_vga(11 downto 3) = counter1066(9 downto 0) - VBP && alarm = '0') then
-							output_colour <= "111100001111";
+							output_colour <= "111111110000";
 						else
 							output_colour <= (others => '0');
 					    end if;
