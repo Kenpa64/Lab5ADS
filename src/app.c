@@ -21,7 +21,12 @@
 #define INTL_DEVICE_ID      XPAR_PS7_SCUGIC_1_DEVICE_ID
 #define INTC_GPIO_INTERRUPT_ID XPAR_FABRIC_AXI_GPIO_0_IP2INTC_IRPT_INTR
 #define XADC_DEVICE_ID 		XPAR_XADCPS_0_DEVICE_ID
-#define BUTTON_CHANNEL		1 // Input channel
+#define BUTTONL_CHANNEL		1 // Input channel
+#define BUTTONR_CHANNEL		2 // Input channel
+#define XADCPS_CH_TEMP		3 // Input channel
+#define DISPLAY_TEMP_CHANNEL		4 // Input channel
+#define TEMP_POS_CHANNEL		5 // Input channel
+#define ALARM_CHANNEL		6 // Input channel
 
 /*
 *********************************************************************************************************
@@ -231,14 +236,15 @@ int main()
     unsigned int temperature_raw;
     unsigned int temperature_C;
     unsigned int max_temp = 40;
-
+    int alarm = 0;
+    
     int over_under = 0;
 
     int new_dataR;
     int old_dataR;
     int new_dataL;
     int old_dataL;
-
+    
     /* Variable initialisation */
     InterruptFlag = 0;
 
@@ -252,9 +258,22 @@ int main()
     status = XGpio_Initialize(&GPIOInst, INTL_DEVICE_ID);
     if (status != XST_SUCCESS)
         return XST_FAILURE;
-
+    
+    //DirectionMask is a bitmask specifying which discretes are input and which are output. Bits set to 0 are output and bits set to 1 are input.
+    //Read Button R 1 bit
+    XGpio_SetDataDirection(&GPIOInst, BUTTONL_CHANNEL, 0xFF); 
+    //Read Button L 1 bit
+    XGpio_SetDataDirection(&GPIOInst, BUTTONR_CHANNEL, 0xFF); 
+    //Read Temp
+    XGpio_SetDataDirection(&GPIOInst, XADCPS_CH_TEMP, 0xFF); 
+    
+    XGpio_SetDataDirection(&GPIOInst, DISPLAY_TEMP_CHANNEL, 0x00); 
+    XGpio_SetDataDirection(&GPIOInst, TEMP_POS_CHANNEL, 0x00); 
+    XGpio_SetDataDirection(&GPIOInst, ALARM_CHANNEL, 0x00); 
+    
+    
     // Config GPIO channel 1 as input
-    XGpio_SetDataDirection(&GPIOInst, SWITCH_CHANNEL, 0xFF); //El channel 2 estaba en 0x00
+    //XGpio_SetDataDirection(&GPIOInst, SWITCH_CHANNEL, 0xFF); //El channel 2 estaba en 0x00
 
     // Initialize interrupt controller
     status = IntrInitFunction(INTR_DEVICE_ID, &GPIOInst);
@@ -269,17 +288,24 @@ int main()
     *axi_pointer = 1; // Change the value, aqui deberia ir algo como "11 primeros bits temp_C, 11 siguientes bits max_temp, 1 bit over_under"
 
     // Reads initial value of the Interruptor
-    new_dataR = XGpio_DiscreteRead(&GPIOInst, INTR_CHANNEL);
+  /*  new_dataR = XGpio_DiscreteRead(&GPIOInst, BUTTONL_CHANNEL);
     old_dataR = new_dataR;
 
-    new_dataL = XGpio_DiscreteRead(&GPIOInst, INTL_CHANNEL);
-    old_dataL = new_dataL;
-
+    new_dataL = XGpio_DiscreteRead(&GPIOInst, BUTTONR_CHANNEL);
+    old_dataL = new_dataL;*/
+   
     while (1) {
-
+        // xadc_get_value_temp
         temperature_raw = XAdcPs_GetAdcData(XAdcInstPtr, XADCPS_CH_TEMP);
+        
         temperature_C = (int) XAdcPs_RawToTemperature(temperature_raw);
 
+        if(temperature_C > 80){
+            alarm = 1;
+        }else if( temperature_C <80){
+            alarm = 0;
+        }
+        
         /* Test for an interrupt produced by GPIO*/
         if (InterruptFlag == 1)
         {
@@ -302,6 +328,11 @@ int main()
             old_dataL = new_dataL;
             old_dataR = new_dataR;
         }
+        
+        //I don't really understand which values the C APP shall send as temperature[10:0] and ttemperature[10:0]
+        XGpio_DiscreteWrite(&GPIOInst, DISPLAY_TEMP_CHANNEL, XXXX);
+        XGpio_DiscreteWrite(&GPIOInst, TEMP_POS_CHANNEL, XXXX);
+        XGpio_DiscreteWrite(&GPIOInst, ALARM_CHANNEL, alarm);
         /* Displays the value of the counter on LED7 and LED6*/
         //XGpio_DiscreteWrite(&GPIOInst, LED_CHANNEL, counter);
         /* Enables or disables the 28-bit counter depending on internal counter variable*/
