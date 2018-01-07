@@ -21,12 +21,8 @@
 #define INTL_DEVICE_ID      XPAR_PS7_SCUGIC_1_DEVICE_ID
 #define INTC_GPIO_INTERRUPT_ID XPAR_FABRIC_AXI_GPIO_0_IP2INTC_IRPT_INTR
 #define XADC_DEVICE_ID 		XPAR_XADCPS_0_DEVICE_ID
-#define BUTTONL_CHANNEL		1 // Input channel
-#define BUTTONR_CHANNEL		2 // Input channel
-#define XADCPS_CH_TEMP		3 // Input channel
-#define DISPLAY_TEMP_CHANNEL		4 // Input channel
-#define TEMP_POS_CHANNEL		5 // Input channel
-#define ALARM_CHANNEL		6 // Input channel
+
+#define BUTTON_CHANNEL		1 // Input channel
 
 /*
 *********************************************************************************************************
@@ -37,7 +33,7 @@
 static XAdcPs XAdcInst;      /* XADC driver instance */
 XAdcPs *XAdcInstPtr = &XAdcInst;
 XScuGic INTCInst;
-static XGpio Gpio; /* The Instance of the GPIO Driver */
+static XGpio butr, butl; /* The Instance of the GPIO Driver */
 int *axi_pointer = (int *) XPAR_VGA_CONTROL_0_S00_AXI_BASEADDR;
 int InterruptFlag; /* Flag used to indicate that an interrupt has occurred */
 int INTR_INT;
@@ -251,37 +247,37 @@ int main()
     init_platform();
 
     // Initialise GPIO
-    status = XGpio_Initialize(&GPIOInst, INTR_DEVICE_ID);
+    
+   
+        
+    status = XGpio_Initialize(&butr, INTR_DEVICE_ID);
     if (status != XST_SUCCESS)
         return XST_FAILURE;
 
-    status = XGpio_Initialize(&GPIOInst, INTL_DEVICE_ID);
+    status = XGpio_Initialize(&butl, INTL_DEVICE_ID);
     if (status != XST_SUCCESS)
         return XST_FAILURE;
     
-    //DirectionMask is a bitmask specifying which discretes are input and which are output. Bits set to 0 are output and bits set to 1 are input.
-    //Read Button R 1 bit
-    XGpio_SetDataDirection(&GPIOInst, BUTTONL_CHANNEL, 0xFF); 
-    //Read Button L 1 bit
-    XGpio_SetDataDirection(&GPIOInst, BUTTONR_CHANNEL, 0xFF); 
-    //Read Temp
-    XGpio_SetDataDirection(&GPIOInst, XADCPS_CH_TEMP, 0xFF); 
+     XGpio_SetDataDirection(&butr, BUTTON_CHANNEL, 0xFF); 
+     XGpio_SetDataDirection(&butl, BUTTON_CHANNEL, 0xFF); 
     
-    XGpio_SetDataDirection(&GPIOInst, DISPLAY_TEMP_CHANNEL, 0x00); 
-    XGpio_SetDataDirection(&GPIOInst, TEMP_POS_CHANNEL, 0x00); 
-    XGpio_SetDataDirection(&GPIOInst, ALARM_CHANNEL, 0x00); 
+    //ADC temperature initialization??
+     //ADC temp init
+    Peripheral_Init();
+    
+    //DirectionMask is a bitmask specifying which discretes are input and which are output. Bits set to 0 are output and bits set to 1 are input.
     
     
     // Config GPIO channel 1 as input
     //XGpio_SetDataDirection(&GPIOInst, SWITCH_CHANNEL, 0xFF); //El channel 2 estaba en 0x00
 
     // Initialize interrupt controller
-    status = IntrInitFunction(INTR_DEVICE_ID, &GPIOInst);
+    status = IntrInitFunction(INTR_DEVICE_ID, &butr);
     if (status != XST_SUCCESS)
         return XST_FAILURE;
 
     // Initialize interrupt controller
-    status = IntlInitFunction(INTL_DEVICE_ID, &GPIOInst);
+    status = IntlInitFunction(INTL_DEVICE_ID, &butl);
     if (status != XST_SUCCESS)
         return XST_FAILURE;
 
@@ -296,6 +292,7 @@ int main()
    
     while (1) {
         // xadc_get_value_temp
+        //temperature_raw = XAdcPs_GetAdcData(XAdcInstPtr, BUTTON_CHANNEL);
         temperature_raw = XAdcPs_GetAdcData(XAdcInstPtr, XADCPS_CH_TEMP);
         
         temperature_C = (int) XAdcPs_RawToTemperature(temperature_raw);
@@ -310,8 +307,8 @@ int main()
         if (InterruptFlag == 1)
         {
             InterruptFlag = 0; // resets the interrupt flag
-            new_dataR = XGpio_DiscreteRead(&GPIOInst, INTR_CHANNEL);
-            new_dataL = XGpio_DiscreteRead(&GPIOInst, INTL_CHANNEL);
+            new_dataR = XGpio_DiscreteRead(&butr, BUTTON_CHANNEL);
+            new_dataL = XGpio_DiscreteRead(&butl, BUTTON_CHANNEL);
 
             /* Rising edge detection*/
             if ((new_dataR == 1) && (old_dataR == 0))
@@ -329,10 +326,7 @@ int main()
             old_dataR = new_dataR;
         }
         
-        //I don't really understand which values the C APP shall send as temperature[10:0] and ttemperature[10:0]
-        XGpio_DiscreteWrite(&GPIOInst, DISPLAY_TEMP_CHANNEL, XXXX);
-        XGpio_DiscreteWrite(&GPIOInst, TEMP_POS_CHANNEL, XXXX);
-        XGpio_DiscreteWrite(&GPIOInst, ALARM_CHANNEL, alarm);
+        
         /* Displays the value of the counter on LED7 and LED6*/
         //XGpio_DiscreteWrite(&GPIOInst, LED_CHANNEL, counter);
         /* Enables or disables the 28-bit counter depending on internal counter variable*/
