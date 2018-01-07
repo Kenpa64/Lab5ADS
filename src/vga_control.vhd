@@ -10,6 +10,9 @@ port(
 	trigger_level: in std_logic_vector(8 downto 0);
 	clk:	in std_logic;
 	reset:	in std_logic;
+	alarm: in std_logic;
+	temperature: in std_logic_vector(10 downto 0);
+	t_temperature: in std_logic_vector(10 downto 0);
 	vsync:	out std_logic;
 	hsync:	out std_logic;
 	red:	out std_logic_vector(3 downto 0);
@@ -117,7 +120,8 @@ architecture arch of vga_control is
 				if(v_screen = '1') then
 					if(('0'&counter1066) - VBP = trigger_level and counter1688 - HBP < 20) then
 						if(counter1688 >= HBP) then
-							output_colour(3 downto 0) <= (others => '1');
+							--output_colour(3 downto 0) <= (others => '1');
+							output_colour <= "000000001111";
 						else 
 							output_colour <= (others => '0');
 						end if;
@@ -135,12 +139,18 @@ architecture arch of vga_control is
 						else
 							output_colour <= (others => '0');
 					    end if;
+					    if(counter1066 >= 541 && counter1066 <= 571) then 
+					    	if(counter1688 >= HBP && counter1688 <= t_temperature) then
+					    		output_colour <= "000000001111" ;
+					    	elsif(counter1688 >= HBP && counter1688 <= HBP + temperature) then
+					    		output_colour <= "000011110000";
+					    	end if;
+					    end if;
 					end if;
 				end if;
 			end if;		
         end if;
 	end process;
-	
 
     -- set hsync and vsync signals to '1' when any counter is on retrace
 	hsync_reg <= '1' when count_1688 < (PPL+HFP+HBP) else '0';
