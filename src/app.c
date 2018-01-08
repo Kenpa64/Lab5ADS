@@ -231,9 +231,11 @@ int main()
 {
     unsigned int temperature_raw;
     unsigned int temperature_C;
+    unsigned int temperature, t_temperature;
+   // unsigned int tempRealToSend, tempThreshToSend;
     unsigned int max_temp = 40;
     int alarm = 0;
-    
+    OS_ERR  err;
     int over_under = 0;
 
     int new_dataR;
@@ -281,7 +283,7 @@ int main()
     if (status != XST_SUCCESS)
         return XST_FAILURE;
 
-    *axi_pointer = 1; // Change the value, aqui deberia ir algo como "11 primeros bits temp_C, 11 siguientes bits max_temp, 1 bit over_under"
+    //*axi_pointer = 1; // Change the value, aqui deberia ir algo como "11 primeros bits temp_C, 11 siguientes bits max_temp, 1 bit over_under"
 
     // Reads initial value of the Interruptor
   /*  new_dataR = XGpio_DiscreteRead(&GPIOInst, BUTTONL_CHANNEL);
@@ -294,7 +296,6 @@ int main()
         // xadc_get_value_temp
         //temperature_raw = XAdcPs_GetAdcData(XAdcInstPtr, BUTTON_CHANNEL);
         temperature_raw = XAdcPs_GetAdcData(XAdcInstPtr, XADCPS_CH_TEMP);
-        
         temperature_C = (int) XAdcPs_RawToTemperature(temperature_raw);
 
         if(temperature_C > 80){
@@ -324,9 +325,18 @@ int main()
             }
             old_dataL = new_dataL;
             old_dataR = new_dataR;
+
+            // temp*(1280/80) = temp*160
+            temperature = temperature_C * 160;
+            t_temperature = max_temp * 160;
         }
+
+        *axi_pointer = alarm;
+        *axi_pointer = temperature;
+        *axi_pointer = t_temperature;
         
-        
+        OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_HMSM_STRICT, &err);                                     /* Waits for 100 milliseconds. 
+
         /* Displays the value of the counter on LED7 and LED6*/
         //XGpio_DiscreteWrite(&GPIOInst, LED_CHANNEL, counter);
         /* Enables or disables the 28-bit counter depending on internal counter variable*/
