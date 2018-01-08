@@ -64,6 +64,18 @@
 #include  <Source/os.h>
 #include  <ucos_bsp.h>
 
+#include <includes.h>
+#include "xadcps.h"
+#include "xstatus.h"
+#include "stdio.h"
+#include "xparameters.h"
+#include "xgpio.h"
+#ifdef XPAR_INTC_0_DEVICE_ID
+ #include "xintc.h"
+#else
+ #include "xscugic.h"
+#endif
+
 /*
 *********************************************************************************************************
 *                                            DEFINES
@@ -92,9 +104,9 @@ static  CPU_STK      AppTaskStartStk[APP_TASK_START_STK_SIZE]; 	// Startup Task 
 static  CPU_STK      AppTask1Stk[APP_TASK1_STK_SIZE];			// Task #1      Stack
 static  CPU_STK      AppTask2Stk[APP_TASK2_STK_SIZE];			// Task #2      Stack
 
-static  OS_MUTEX     AppMutexPrint;									// App Mutex
+static  OS_MUTEX     AppMutexPrint, AppMutexAlarm, AppMutexTemp;									// App Mutex
 
-static unsigned int temp, thresh;
+static unsigned int temp, thresh, alarm, temp_raw;
 /*
 *********************************************************************************************************
 *                                      LOCAL FUNCTION PROTOTYPES
@@ -107,6 +119,8 @@ static  void  AppTask1           (void *p_arg);
 static  void  AppTask2           (void *p_arg);
 static  void  AppPrintWelcomeMsg (void);
 static  void  AppPrint           (char *str);
+static  void  AppUpdateTemp (void);
+static  void  AppUpdateAlarm (void);
 static  void  AppPrintWelcomeMsg (void);
 void  MainTask (void *p_arg);
 
@@ -128,6 +142,79 @@ int main(void)
 	return 0;
 }
 
+
+
+/*
+*********************************************************************************************************
+*                                             LOCAL DEFINES
+*********************************************************************************************************
+*/
+
+#define XADC_DEVICE_ID      XPAR_XADCPS_0_DEVICE_ID
+#define BUTTON_CHANNEL      1 // Input channel
+
+/*
+*********************************************************************************************************
+*                                            LOCAL VARIABLES
+*********************************************************************************************************
+*/
+
+static XAdcPs XAdcInst;      /* XADC driver instance */
+XAdcPs *XAdcInstPtr = &XAdcInst;
+static XGpio Gpio; /* The Instance of the GPIO Driver */
+
+/*
+*********************************************************************************************************
+*                                       INIT TEMPERATURE PERIPHERAL
+*********************************************************************************************************
+*/
+
+void Peripheral_Init()
+{
+    int Status;
+    XAdcPs_Config *ConfigPtr;
+
+    /* Initialize the GPIO driver. If an error occurs then exit */
+        Status = XGpio_Initialize(&Gpio, GPIO_DEVICE_ID);
+        if (Status != XST_SUCCESS) {
+            return XST_FAILURE;
+        }
+
+        /*
+         * Perform a self-test on the GPIO.  This is a minimal test and only
+         * verifies that there is not any bus error when reading the data
+         * register
+         */
+        XGpio_SelfTest(&Gpio);
+
+        /*
+         * Setup direction register so the switch is an input and the LED is
+         * an output of the GPIO
+         */
+        XGpio_SetDataDirection(&Gpio, BUTTON_CHANNEL, 1);
+
+        /*
+         * Initialize the XAdc driver.
+         */
+        ConfigPtr = XAdcPs_LookupConfig(XADC_DEVICE_ID);
+
+
+        XAdcPs_CfgInitialize(XAdcInstPtr, ConfigPtr,
+                    ConfigPtr->BaseAddress);
+
+        /*
+         * Self Test the XADC/ADC device
+         */
+        Status = XAdcPs_SelfTest(XAdcInstPtr);
+
+
+        /*
+         * Disable the Channel Sequencer before configuring the Sequence
+         * registers.
+         */
+        XAdcPs_SetSequencerMode(XAdcInstPtr, XADCPS_SEQ_MODE_SAFE);
+}
+
 /*
 *********************************************************************************************************
 *                                          STARTUP TASK
@@ -141,6 +228,8 @@ int main(void)
 * Notes       : 
 *********************************************************************************************************
 */
+
+
 void  MainTask (void *p_arg)
 {
     OS_ERR       err;
@@ -148,6 +237,29 @@ void  MainTask (void *p_arg)
     AppPrintWelcomeMsg();
 
 	OSInit(&err);		/* Initialize uC/OS-III.                                */
+
+    //init values
+
+    //Init temp sensor
+    
+    Peripheral_Init();
+
+    temp_raw = XAdcPs_GetAdcData(XAdcInstPtr, XADCPS_CH_TEMP);
+    temp = (int) XAdcPs_RawToTemperature(temperature_raw);
+    thresh = 40;
+    //updateTemp(temperature);
+    *((unsigned int *) XPAR_AXI_GPIO_TEMP_BASEADDR) = temp << 4;
+    //updateThreshold(threshold);
+    *((unsigned int *) (XPAR_AXI_GPIO_TEMP_BASEADDR + 0x00000008)) = thresh << 4;
+   // decide alarm value 
+    if(temp >= thresh)
+        alarm = 1;
+    else
+        alarm = 0;
+    //updateAlarm(temperature, threshold);
+    *((unsigned int *) XPAR_AXI_GPIO_ALARM_BASEADDR) = alarm;
+    
+   
 
 	OSTaskCreate	((OS_TCB	*)&AppTaskStartTCB,
 					(CPU_CHAR	*)"App Task Start",
@@ -224,8 +336,17 @@ static  void  AppTaskStart (void *p_arg)
 
 	UCOS_Print("Task Start Created\r\n");
 
+    OS_CSP_TickInit();                                          /* Initialize the Tick interrupt                        */
+
+    Mem_Init();                                                 /* Initialize memory management module                  */
+    Math_Init();                                                /* Initialize mathematical module                       */
+    
     AppTaskCreate();                                            /* Create Application tasks                             */
+
+    //Define three mutexes for three different processes (print and send new info)
     OSMutexCreate((OS_MUTEX *)&AppMutexPrint, (CPU_CHAR *)"My App. Mutex", (OS_ERR *)&err);
+    OSMutexCreate((OS_MUTEX *)&AppMutexAlarm, (CPU_CHAR *)"My App. Update Alarm", (OS_ERR *)&err);
+    OSMutexCreate((OS_MUTEX *)&AppMutexTemp, (CPU_CHAR *)"My App. Update Temp", (OS_ERR *)&err);
 
     while (1) {                                            /* Task body, always written as an infinite loop.       */
 
@@ -233,7 +354,7 @@ static  void  AppTaskStart (void *p_arg)
                       OS_OPT_TIME_HMSM_STRICT,
                      &err);                                     /* Waits 100 milliseconds.                              */
 
-    	AppPrint(".");                                          /* Prints a dot every 100 milliseconds.                 */
+    	//AppPrint(".");                                          /* Prints a dot every 100 milliseconds.                 */
     }
 }
 
@@ -321,13 +442,26 @@ static  void  AppTask1 (void *p_arg)
         new_dataL= (0x00000002 & but)>>1;
 
         //second approach is using interruptions so we are not using at this moment
+        if(new_dataL ^ old_dataL){
+            if(thresh > 0){
+                thresh--;
+            }
+            AppUpdateAlarm();
+            old_dataL = new_dataL;
+            
+        }else if(new_dataR ^ old_dataR){
+            if(thresh < 80){
+                thresh++;
+            }
+            AppUpdateAlarm();
+            old_dataR = new_dataR;
+        }      
 
-        
-        OSTimeDlyHMSM(0, 0, 1, 0,
+        OSTimeDlyHMSM(0, 0, 0, 100,
                       OS_OPT_TIME_HMSM_STRICT,
-                     &err);                                     /* Waits for 1 second.                                  */
+                     &err);                                     /* Waits for 0.1 second.                                  */
 
-    	AppPrint("1");                                          /* Prints 1 to the UART.                                */
+    	//AppPrint("1");                                          /* Prints 1 to the UART.                                */
 
     }
 }
@@ -358,12 +492,15 @@ static  void  AppTask2 (void *p_arg)
     AppPrint("Task #2 Started\r\n");
 
     while (1) {                                            		/* Task body, always written as an infinite loop.       */
-
-        OSTimeDlyHMSM(0, 0, 2, 0,
+        
+        AppUpdateTemp();
+        AppPrint("Temperature updated: %d\n", temp);
+        if(alarm = 1) AppPrint("Alarm ON\n"); 
+        OSTimeDlyHMSM(0, 0, 0, 500,
                       OS_OPT_TIME_HMSM_STRICT,
-                     &err);                                     /* Waits for 2 seconds.                                 */
+                     &err);                                     /* Waits for 0.5 seconds.                                 */
 
-    	AppPrint("2");                                          /* Prints 2 to the UART.                                */
+    	                                          /* Prints 2 to the UART.                                */
 
     }
 }
@@ -407,3 +544,54 @@ static  void  AppPrint (char *str)
 					(OS_ERR *)&err);
 }
 
+
+static void AppUpdateAlarm() {
+    OS_ERR err;
+    CPU_TS ts;
+
+    OSMutexPend(    (OS_MUTEX *)&AppMutexAlarm,
+                    (OS_TICK )0u,                                            /* No timeout.                                          */
+                    (OS_OPT )OS_OPT_PEND_BLOCKING,                          /* Block if not available.                              */
+                    (CPU_TS *)&ts,                                            /* Timestamp.                                           */
+                    (OS_ERR *)&err);
+
+    if(temp > thresh) alarm= 1;
+    else alarm = 0;
+    
+    //updateThreshold(threshold);
+    *((unsigned int *) (XPAR_AXI_GPIO_TEMP_BASEADDR + 0x00000008)) = thresh << 4;
+    //Update alarm
+    *((unsigned int *) XPAR_AXI_GPIO_ALARM_BASEADDR) = alarm;
+    
+    OSMutexPost(    (OS_MUTEX *)&AppMutexAlarm,
+                    (OS_OPT )OS_OPT_POST_NONE,                              /* No options.                                          */
+                    (OS_ERR *)&err);
+}
+
+
+static void AppUpdateTemp() {
+    OS_ERR err;
+    CPU_TS ts;
+
+    OSMutexPend(    (OS_MUTEX *)&AppMutexTemp,
+                    (OS_TICK )0u,                                            /* No timeout.                                          */
+                    (OS_OPT )OS_OPT_PEND_BLOCKING,                          /* Block if not available.                              */
+                    (CPU_TS *)&ts,                                            /* Timestamp.                                           */
+                    (OS_ERR *)&err);
+
+    //Get the new value 
+    temp_raw = XAdcPs_GetAdcData(XAdcInstPtr, XADCPS_CH_TEMP);
+    temp = (int) XAdcPs_RawToTemperature(temperature_raw);
+
+    if(temp > thresh) alarm= 1;
+    else alarm = 0;
+
+    //updateTemp(temperature);
+    *((unsigned int *) XPAR_AXI_GPIO_TEMP_BASEADDR) = temp << 4;
+     //Update alarm
+    *((unsigned int *) XPAR_AXI_GPIO_ALARM_BASEADDR) = alarm;
+
+    OSMutexPost(    (OS_MUTEX *)&AppMutexTemp,
+                    (OS_OPT )OS_OPT_POST_NONE,                              /* No options.                                          */
+                    (OS_ERR *)&err);
+}
