@@ -39,17 +39,21 @@ architecture arch of trigger is
 	signal count_1280, count_1280_next: std_logic_vector(10 downto 0);
 	signal vsync_reg: std_logic;
 	signal ongoing,process_read: std_logic;
+	signal sample_flag, sample_ready_reg: std_logic;
 	
+	signal data_end : std_logic; --flag
 	begin 
 	sync: process(clk, reset)
 	begin
 		if(clk'event and clk = '1') then
 			if(reset = '0') then
-				-- reset registers, supose active low
-				trigger_up_sync <= '1';
-				trigger_down_sync <= '1';
-				trigger_n_p_sync <= '1';
+				-- reset registers, active high
+				trigger_up_sync <= '0';
+				trigger_down_sync <= '0';
+				trigger_n_p_sync <= '0';
 				trigger_level_reg <= (others => '0');
+				data_end <= '0';
+				
 			else
 				trigger_up_sync <= trigger_up;
 				trigger_up_sync2 <= trigger_up_sync;
@@ -62,7 +66,8 @@ architecture arch of trigger is
 				trigger_n_p_sync3 <= trigger_n_p_sync2;
 				
 				trigger_level <= actual_trigger;
-
+				
+				sample_ready_reg <= sample_ready;
 				-- 2 registers?
 				vsync_reg <= vsync;
 			end if;
@@ -80,13 +85,13 @@ architecture arch of trigger is
 			else
 				-- falling edge detection
 				-- TODO: edge detection well done
-				if(trigger_up_sync3 = '1' and trigger_up_sync2 = '0') then
-					actual_trigger <= actual_trigger + trigger_unit;
-				elsif (trigger_down_sync3 = '1' and trigger_down_sync2 = '0') then
+				if(trigger_up_sync3 = '0' and trigger_up_sync2 = '1' and actual_trigger > trigger_unit) then
 					actual_trigger <= actual_trigger - trigger_unit;
 				end if;
-				
-				if(trigger_n_p_sync3 = '1' and trigger_n_p_sync2 = '0') then
+				if (trigger_down_sync3 = '0' and trigger_down_sync2 = '1' and actual_trigger < 496) then
+					actual_trigger <= actual_trigger + trigger_unit;
+				end if;
+				if(trigger_n_p_sync3 = '0' and trigger_n_p_sync2 = '1') then
 					trigger_slope <= not(trigger_slope);
 				end if;
 			end if;
@@ -100,10 +105,10 @@ architecture arch of trigger is
 			if (reset = '0') then
                 ongoing <= '0';
             else
-            	if (vsync = '0' and vsync_reg = '1') then
-            		ongoing <= '1';
-            	elsif (count_1280 = 1280) then
+            	if (data_end = '1') then
             		ongoing <= '0';
+				elsif (vsync = '0' and vsync_reg = '1') then
+					ongoing <= '1';
             	end if;
             end if;
         end if;
@@ -113,13 +118,21 @@ architecture arch of trigger is
 	counter1280: process (clk, reset)
 		begin
         if (clk'event and clk = '1') then
-            if (reset = '0' or count_1280 = 1280) then
-                count_1280_next <= (others => '0');
+            --if (reset = '0' or count_1280 = 1279) then
+                --count_1280_next <= (others => '0');
+			if (reset = '0') then
             else
                 -- it resets when the line ends, if not it increases in 1
                 if (sample_ready = '1' and ongoing = '1' and process_read = '1') then
-                    count_1280_next <= count_1280 + 1;
-                end if;
+				--if (process_read = '1' and sample_flag = '1') then
+					if(count_1280 = 1280) then 
+						count_1280_next <= (others => '0');
+						data_end <= '1';
+					else
+						count_1280_next <= count_1280 + 1;
+						data_end <= '0';
+					end if;
+				end if;
             end if;
         end if;
 	end process;
@@ -135,12 +148,12 @@ architecture arch of trigger is
 				if(sample_ready = '1' and ongoing = '1') then
 					if(process_read = '0') then
 						if(trigger_slope = '0') then
-							if((data1(11 downto 3) = actual_trigger) and (last_data1 > data1(11 downto 8))) then
+							if((data1(11 downto 3) <= actual_trigger) and (last_data1 > data1(11 downto 8))) then
 								data1_value <= data1;
 								process_read <= '1';
 							end if;
 						elsif(trigger_slope = '1') then
-							if((data1(11 downto 3) = actual_trigger) and (last_data1 < data1(11 downto 8))) then
+							if((data1(11 downto 3) >= actual_trigger) and (last_data1 < data1(11 downto 8))) then
 								data1_value <= data1;
 								process_read <= '1';
 							end if;
@@ -166,15 +179,20 @@ architecture arch of trigger is
 				addr_in <= (others => '0');
 				data_in <= (others => '0');
 			else
-				if(sample_ready = '1' and ongoing = '1' and process_read = '1') then
+				--if(sample_flag = '1' and ongoing = '1' and process_read = '1') then
+				if(sample_flag = '1' and process_read = '1') then
 					we <= '1';
-					addr_in <= count_1280;
+					addr_in <= count_1280 - 1;
 					data_in <= data1_value;
+					--data_in <= data1;
+				else
+					we <= '0';
 				end if;
 			end if;
 		end if;
 	end process;
-
-	count_1280 <= count_1280_next;
 	
+	
+	count_1280 <= count_1280_next;
+	sample_flag <= '1' when (sample_ready = '0' and sample_ready_reg = '1') else '0';
 end arch;
