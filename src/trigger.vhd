@@ -29,6 +29,7 @@ architecture arch of trigger is
 	signal last_data1: std_logic_vector(3 downto 0);
 	signal trigger_unit: std_logic_vector(4 downto 0):= "10000";
 	signal trigger_slope: std_logic;
+	signal max_data, number_of_clocks, period, frequency: std_logic_vector(8 downto 0); 
 	--registers init
 	signal trigger_up_sync, trigger_up_sync2, trigger_up_sync3: std_logic;
 	signal trigger_down_sync, trigger_down_sync2, trigger_down_sync3: std_logic;
@@ -40,7 +41,8 @@ architecture arch of trigger is
 	signal vsync_reg: std_logic;
 	signal ongoing,process_read: std_logic;
 	signal sample_flag, sample_ready_reg: std_logic;
-	
+	singal computeFrequency: std_logic;
+
 	signal data_end : std_logic; --flag
 	begin 
 	sync: process(clk, reset)
@@ -170,6 +172,32 @@ architecture arch of trigger is
 		end if;
 	end process;
 
+	-- Frequency/Period estimator
+	frequencyEstimator: process(clk, reset)
+	begin
+		if(clk'event and clk = '1') then
+			if(reset = '0') then
+				max_data <= (others => '0');
+				number_of_clocks <= "000000001";
+				computeFrequency <= '0';
+			else
+				if (max_data < data1(11 downto 3)) then
+					max_data <= data1(11 downto 3);
+					computeFrequency <= '0';
+				else 
+					if(maxdata = data1(11 downto 3)) then
+						-- Aprox 10ns per clock period
+						computeFrequency <= '1';
+						number_of_clocks <= "000000001";
+					else
+						computeFrequency <= '0';
+						number_of_clocks <= number_of_clocks+1;
+					end if;
+				end if;
+			end if;
+		end if;
+	end process;
+
 	-- Write to memory process
 	writeToMemory: process(clk, reset)
 	begin
@@ -195,4 +223,8 @@ architecture arch of trigger is
 	
 	count_1280 <= count_1280_next;
 	sample_flag <= '1' when (sample_ready = '0' and sample_ready_reg = '1') else '0';
+	frequency <= 1/period;
+	period <= number_of_clocks*10 when computeFrequency = '1';
+
+
 end arch;

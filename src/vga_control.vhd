@@ -30,6 +30,7 @@ architecture arch of vga_control is
 	constant VFP: integer:= 1;		-- vsync front porch
 	constant VBP: integer:= 38;		-- vsync back porch
 	constant VRE: integer:= 3;		-- vsync retrace
+	constant offset: integer:= 256; -- center the display
 
 	-- counter variables
 	signal count_1688, count_1688_next: std_logic_vector(10 downto 0);
@@ -119,22 +120,25 @@ architecture arch of vga_control is
 				addr_out <= (others => '0');
 				data_to_vga <= (others => '0');
 			else
-				if(h_count < 1279 and h_count >= -1 and v_count < 512) then
+				--if(h_count < 1279 and h_count >= -1 and v_count < 512) then
+				if(h_count < 1279 and h_count >= -1 and v_count < 512 and v_count >=0) then
 						addr_out <= h_count + 1;
 						data_to_vga <= data_out;
 				end if;
 				if(v_screen = '1' and h_screen = '1') then
 					-- set output to '0' below the temperature display
-					if(v_count(8 downto 0) = trigger_level and h_count < 20 and v_count < 512) then
+					-- if(v_count(8 downto 0) = trigger_level and h_count < 20 and v_count < 512) then
+					if(v_count(8 downto 0) = trigger_level and h_count < 20 and v_count < 512 and v_count >=0) then
 						output_colour <= "000000001111";
 					else
-						if(data_out(11 downto 3) = v_count(8 downto 0) and alarm = '0' and v_count < 512) then
+						--if(data_out(11 downto 3) = v_count(8 downto 0) and alarm = '0' and v_count < 512) then
+						if(data_out(11 downto 3) = v_count(8 downto 0) and alarm = '0' and v_count < 512 and v_count >= 0) then
 							output_colour <= "111111110000";
 						else
-							if(count_1066 >= 538 and count_1066 <= 573) then
+							if(count_1066 >= (538 + offset) and count_1066 <= (573 + offset)) then
 								if(count_1688 = (HBP + t_temperature)) then
 									output_colour <= "000000001111" ;
-								elsif(count_1066 >= 541 and count_1066 <= 571) then 
+								elsif(count_1066 >= (541 + offset) and count_1066 <= (571 + offset) ) then 
 									if(count_1688 <= HBP + temperature) then
 										if(alarm = '0') then
 											output_colour <= "000011110000";
@@ -172,7 +176,8 @@ architecture arch of vga_control is
 	v_screen <= '1' when (count_1066 > VBP and count_1066 <= VBP+1024) else '0';
 
 	--Substraction count to get a value refered to start of display, can be negative
-	v_count <= count_1066 - VBP;
+	--v_count <= count_1066 - VBP;
+	v_count <= count_1066 - VBP - offset;
 	h_count <= count_1688 - HBP;
 	
 	-- Separate the GPIO signal in alarm, temperature and t_temperature
