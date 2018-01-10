@@ -136,16 +136,20 @@ architecture arch of vga_control is
 							output_colour <= "111111110000";
 						else
 							if(count_1066 >= (538 + offset) and count_1066 <= (573 + offset)) then
-								if(count_1688 = (HBP + t_temperature)) then
+								if(h_count = t_temperature) then
 									output_colour <= "000000001111" ;
-								elsif(count_1066 >= (541 + offset) and count_1066 <= (571 + offset) ) then 
-									if(count_1688 <= HBP + temperature) then
+								elsif((count_1066 >= (541 + offset)) and (count_1066 <= (571 + offset)) ) then 
+									if(h_count <= temperature) then
 										if(alarm = '0') then
 											output_colour <= "000011110000";
 										else
 											output_colour <= "111100000000";
 										end if;
+									else
+										output_colour <= (others => '0');
 									end if;
+								else
+									output_colour <= (others => '0');
 								end if;
 							else
 								output_colour <= (others => '0');
