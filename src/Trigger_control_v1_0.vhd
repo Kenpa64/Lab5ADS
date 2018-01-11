@@ -2,10 +2,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity Trigger_control_v1_0 is
+entity trigger_v1_0 is
 	generic (
 		-- Users to add parameters here
-
+		
 		-- User parameters ends
 		-- Do not modify the parameters beyond this line
 
@@ -16,7 +16,18 @@ entity Trigger_control_v1_0 is
 	);
 	port (
 		-- Users to add ports here
-
+        clk:	in std_logic;
+        reset:    in std_logic;
+        trigger_up: in std_logic;
+        trigger_down: in std_logic;
+        trigger_n_p: in std_logic;
+        sample_ready: in std_logic;
+        data1: in std_logic_vector(11 downto 0);
+        vsync: in std_logic;
+        we: out std_logic;
+        addr_in: out std_logic_vector(10 downto 0);
+        data_in: out std_logic_vector(11 downto 0);
+        trigger_level: out std_logic_vector(8 downto 0);
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -44,17 +55,27 @@ entity Trigger_control_v1_0 is
 		s00_axi_rvalid	: out std_logic;
 		s00_axi_rready	: in std_logic
 	);
-end Trigger_control_v1_0;
+end trigger_v1_0;
 
-architecture arch_imp of Trigger_control_v1_0 is
+architecture arch_imp of trigger_v1_0 is
 
 	-- component declaration
-	component Trigger_control_v1_0_S00_AXI is
+	component trigger_v1_0_S00_AXI is
 		generic (
 		C_S_AXI_DATA_WIDTH	: integer	:= 32;
 		C_S_AXI_ADDR_WIDTH	: integer	:= 4
 		);
 		port (
+		trigger_up: in std_logic;
+        trigger_down: in std_logic;
+        trigger_n_p: in std_logic;
+        sample_ready: in std_logic;
+        data1: in std_logic_vector(11 downto 0);
+        vsync: in std_logic;
+        we: out std_logic;
+        addr_in: out std_logic_vector(10 downto 0);
+        data_in: out std_logic_vector(11 downto 0);
+        trigger_level: out std_logic_vector(8 downto 0);
 		S_AXI_ACLK	: in std_logic;
 		S_AXI_ARESETN	: in std_logic;
 		S_AXI_AWADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -77,17 +98,27 @@ architecture arch_imp of Trigger_control_v1_0 is
 		S_AXI_RVALID	: out std_logic;
 		S_AXI_RREADY	: in std_logic
 		);
-	end component Trigger_control_v1_0_S00_AXI;
+	end component trigger_v1_0_S00_AXI;
 
 begin
 
 -- Instantiation of Axi Bus Interface S00_AXI
-Trigger_control_v1_0_S00_AXI_inst : Trigger_control_v1_0_S00_AXI
+trigger_v1_0_S00_AXI_inst : trigger_v1_0_S00_AXI
 	generic map (
 		C_S_AXI_DATA_WIDTH	=> C_S00_AXI_DATA_WIDTH,
 		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH
 	)
 	port map (
+	    trigger_up => trigger_up,
+        trigger_down => trigger_down,
+        trigger_n_p => trigger_n_p,
+        addr_in => addr_in,
+        data_in => data_in,
+        vsync => vsync,
+        we => we,
+        sample_ready => sample_ready,
+        data1 => data1,
+        trigger_level => trigger_level,
 		S_AXI_ACLK	=> s00_axi_aclk,
 		S_AXI_ARESETN	=> s00_axi_aresetn,
 		S_AXI_AWADDR	=> s00_axi_awaddr,
@@ -112,7 +143,7 @@ Trigger_control_v1_0_S00_AXI_inst : Trigger_control_v1_0_S00_AXI
 	);
 
 	-- Add user logic here
-
+        
 	-- User logic ends
 
 end arch_imp;

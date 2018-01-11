@@ -22,6 +22,7 @@ entity vga_control_v1_0 is
         green: out std_logic_vector(3 downto 0);
         blue: out std_logic_vector(3 downto 0);
         addr_out: out std_logic_vector(10 downto 0);
+        gpio_in: in std_logic_vector(22 downto 0);
         data_out: in std_logic_vector(11 downto 0);
         trigger_level: in std_logic_vector(8 downto 0);
 		-- User ports ends
@@ -68,6 +69,7 @@ architecture arch_imp of vga_control_v1_0 is
         green: out std_logic_vector(3 downto 0);
         blue: out std_logic_vector(3 downto 0);
         addr_out: out std_logic_vector(10 downto 0);
+        gpio_in: in std_logic_vector(22 downto 0);
         data_out: in std_logic_vector(11 downto 0);
         trigger_level: in std_logic_vector(8 downto 0);
 		S_AXI_ACLK	: in std_logic;
@@ -108,6 +110,7 @@ vga_control_v1_0_S00_AXI_inst : vga_control_v1_0_S00_AXI
         red => red,
         blue => blue,
         green => green,
+        gpio_in => gpio_in,
         addr_out => addr_out,
         data_out => data_out,
         trigger_level => trigger_level,

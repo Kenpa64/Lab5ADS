@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity Trigger_control_v1_0_S00_AXI is
+entity trigger_v1_0_S00_AXI is
 	generic (
 		-- Users to add parameters here
 
@@ -16,7 +16,16 @@ entity Trigger_control_v1_0_S00_AXI is
 	);
 	port (
 		-- Users to add ports here
-
+        trigger_up: in std_logic;
+        trigger_down: in std_logic;
+        trigger_n_p: in std_logic;
+        sample_ready: in std_logic;
+        data1: in std_logic_vector(11 downto 0);
+        vsync: in std_logic;
+        we: out std_logic;
+        addr_in: out std_logic_vector(10 downto 0);
+        data_in: out std_logic_vector(11 downto 0);
+        trigger_level: out std_logic_vector(8 downto 0);
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -81,9 +90,26 @@ entity Trigger_control_v1_0_S00_AXI is
     		-- accept the read data and response information.
 		S_AXI_RREADY	: in std_logic
 	);
-end Trigger_control_v1_0_S00_AXI;
+end trigger_v1_0_S00_AXI;
 
-architecture arch_imp of Trigger_control_v1_0_S00_AXI is
+architecture arch_imp of trigger_v1_0_S00_AXI is
+
+    component trigger 
+    port(
+        clk:	in std_logic;
+        reset:    in std_logic;
+        trigger_up: in std_logic;
+        trigger_down: in std_logic;
+        trigger_n_p: in std_logic;
+        sample_ready: in std_logic;
+        data1: in std_logic_vector(11 downto 0);
+        vsync: in std_logic;
+        we: out std_logic;
+        addr_in: out std_logic_vector(10 downto 0);
+        data_in: out std_logic_vector(11 downto 0);
+        trigger_level: out std_logic_vector(8 downto 0)
+    );
+    end component;
 
 	-- AXI4LITE signals
 	signal axi_awaddr	: std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -392,7 +418,7 @@ begin
             trigger_down => trigger_down,
             trigger_n_p => trigger_n_p,
             we => we,
-            addr_in => adrr_in,
+            addr_in => addr_in,
             data_in => data_in,
             sample_ready => sample_ready,
             trigger_level => trigger_level,

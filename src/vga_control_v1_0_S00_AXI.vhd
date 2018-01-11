@@ -19,6 +19,7 @@ entity vga_control_v1_0_S00_AXI is
 		addr_out: out std_logic_vector(10 downto 0);
 		data_out: in std_logic_vector(11 downto 0);
 		trigger_level: in std_logic_vector(8 downto 0);
+		gpio_in: in std_logic_vector(22 downto 0);
         vsync: out std_logic;
         hsync: out std_logic;
         red: out std_logic_vector(3 downto 0);
@@ -99,6 +100,7 @@ architecture arch_imp of vga_control_v1_0_S00_AXI is
         addr_out: out std_logic_vector(10 downto 0);
         data_out: in std_logic_vector(11 downto 0);
         trigger_level: in std_logic_vector(8 downto 0);
+        gpio_in: in std_logic_vector(22 downto 0);
         vsync: out std_logic;
         hsync: out std_logic;
         red: out std_logic_vector(3 downto 0);
@@ -409,11 +411,12 @@ begin
 
 	-- Add user logic here
     reset_vga <= not S_AXI_ARESETN;
-    vga_instance: vga_control
+    vga_control_instance: vga_control
     port map(
         clk => S_AXI_ACLK,
         reset => reset_vga,
         trigger_level => trigger_level,
+        gpio_in => gpio_in,
         addr_out => addr_out,
         data_out => data_out,
         hsync => hsync,
