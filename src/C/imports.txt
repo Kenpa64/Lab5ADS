@@ -1,0 +1,3 @@
+C:\Xilinx\SDK\2017.2\data\embeddedsw\XilinxProcessorIPLib\drivers\scugic_v3_7\src
+C:\Xilinx\ucos_v1_42\micrium_source\uCOS-II\Source
+C:\Xilinx\ucos_v1_42\micrium_source\uCOS-II\Ports\MicroBlaze\EDK\Code
