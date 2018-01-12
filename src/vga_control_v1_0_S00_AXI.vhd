@@ -16,10 +16,11 @@ entity vga_control_v1_0_S00_AXI is
 	);
 	port (
 		-- Users to add ports here
-		addr_out: out std_logic_vector(10 downto 0);
+		addr_out: out std_logic_vector(11 downto 0);
 		data_out: in std_logic_vector(11 downto 0);
 		trigger_level: in std_logic_vector(8 downto 0);
 		gpio_in: in std_logic_vector(22 downto 0);
+		sw0: in std_logic;
         vsync: out std_logic;
         hsync: out std_logic;
         red: out std_logic_vector(3 downto 0);
@@ -97,10 +98,11 @@ architecture arch_imp of vga_control_v1_0_S00_AXI is
     port(
         clk: in std_logic;
         reset: in std_logic;
-        addr_out: out std_logic_vector(10 downto 0);
+        addr_out: out std_logic_vector(11 downto 0);
         data_out: in std_logic_vector(11 downto 0);
         trigger_level: in std_logic_vector(8 downto 0);
         gpio_in: in std_logic_vector(22 downto 0);
+        sw0: in std_logic;
         vsync: out std_logic;
         hsync: out std_logic;
         red: out std_logic_vector(3 downto 0);
@@ -417,6 +419,7 @@ begin
         reset => reset_vga,
         trigger_level => trigger_level,
         gpio_in => gpio_in,
+        sw0 <= sw0,
         addr_out => addr_out,
         data_out => data_out,
         hsync => hsync,

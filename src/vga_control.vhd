@@ -11,12 +11,13 @@ port(
 	clk:	in std_logic;
 	reset:	in std_logic;
 	gpio_in: in std_logic_vector(22 downto 0);
+	sw0: in std_logic;
 	vsync:	out std_logic;
 	hsync:	out std_logic;
 	red:	out std_logic_vector(3 downto 0);
 	green:	out std_logic_vector(3 downto 0);
 	blue:	out std_logic_vector(3 downto 0);
-	addr_out: out std_logic_vector(10 downto 0)
+	addr_out: out std_logic_vector(11 downto 0)
 	);
 end vga_control;
 
@@ -33,9 +34,10 @@ architecture arch of vga_control is
 	constant offset: integer:= 256; -- center the display
 
 	-- counter variables
-	signal count_1688, count_1688_next: std_logic_vector(10 downto 0);
+	signal count_1688, count_1688_next: std_logic_vector(11 downto 0);
 	signal count_1066, count_1066_next: std_logic_vector(10 downto 0);
-    signal h_count, v_count: std_logic_vector(10 downto 0);
+    signal h_count: std_logic_vector(11 downto 0);
+    signal v_count: std_logic_vector(10 downto 0);
 
 	-- control variables
 	signal h_end, v_end, h_screen, v_screen: std_logic;
@@ -43,6 +45,9 @@ architecture arch of vga_control is
     -- output register sync signals
 	signal vsync_reg: std_logic;
 	signal hsync_reg: std_logic;
+
+	signal sw0_reg, sw0_reg1: std_logic;
+	signal h_add: std_logic_vector(11 downto 0);
     
 	signal output_colour: std_logic_vector(11 downto 0);
 
@@ -61,9 +66,11 @@ architecture arch of vga_control is
             if (reset = '1') then	
                 -- All the signals are reseted in the processes below
             else
-
     			vsync <= vsync_reg;
     			hsync <= hsync_reg;
+
+    			sw0_reg <= sw0;
+    			sw0_reg1 <= sw0_reg;
 
                 --Sync colours
                 red <= output_colour(11 downto 8);
@@ -120,9 +127,14 @@ architecture arch of vga_control is
 				addr_out <= (others => '0');
 				data_to_vga <= (others => '0');
 			else
+				if(sw0_reg1 = '0') then
+					h_add <= 0;
+				else
+					h_add <= h_count + 2;
+				end if;
 				--if(h_count < 1279 and h_count >= -1 and v_count < 512) then
 				if(h_count < 1279 and h_count >= -1 and v_count < 512 and v_count >=0) then
-						addr_out <= h_count + 1;
+						addr_out <= h_count + 1 + h_add;
 						data_to_vga <= data_out;
 				end if;
 				if(v_screen = '1' and h_screen = '1') then

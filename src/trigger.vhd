@@ -16,7 +16,7 @@ port(
 	trigger_n_p:	in std_logic;
 	data1: in std_logic_vector(11 downto 0);
 	we:	out std_logic;
-	addr_in:	out std_logic_vector(10 downto 0);
+	addr_in:	out std_logic_vector(11 downto 0);
 	data_in:	out std_logic_vector(11 downto 0);
 	trigger_level:	out std_logic_vector(8 downto 0);
 	period_clks: out std_logic_vector(8 downto 0)
@@ -37,7 +37,7 @@ architecture arch of trigger is
 	signal trigger_level_reg: std_logic_vector(8 downto 0);
 	
 	signal data1_value: std_logic_vector(11 downto 0);
-	signal count_1280, count_1280_next: std_logic_vector(10 downto 0);
+	signal count_2560, count_2560_next: std_logic_vector(11 downto 0);
 	signal vsync_reg: std_logic;
 	signal ongoing,process_read: std_logic;
 	signal sample_flag, sample_ready_reg: std_logic;
@@ -127,11 +127,11 @@ architecture arch of trigger is
                 -- it resets when the line ends, if not it increases in 1
                 if (sample_ready = '1' and ongoing = '1' and process_read = '1') then
 				--if (process_read = '1' and sample_flag = '1') then
-					if(count_1280 = 1280) then 
-						count_1280_next <= (others => '0');
+					if(count_2560 = 2560) then 
+						count_2560_next <= (others => '0');
 						data_end <= '1';
 					else
-						count_1280_next <= count_1280 + 1;
+						count_2560_next <= count_2560 + 1;
 						data_end <= '0';
 					end if;
 				end if;
@@ -162,7 +162,7 @@ architecture arch of trigger is
 						end if;
 					else
 						data1_value <= data1;
-						if (count_1280 = 1280) then
+						if (count_2560 = 2560) then
 							process_read <= '0';
 						end if;
 					end if;
@@ -216,7 +216,7 @@ architecture arch of trigger is
 				--if(sample_flag = '1' and ongoing = '1' and process_read = '1') then
 				if(sample_flag = '1' and process_read = '1') then
 					we <= '1';
-					addr_in <= count_1280 - 1;
+					addr_in <= count_2560 - 1;
 					data_in <= data1_value;
 					--data_in <= data1;
 				else
@@ -227,7 +227,7 @@ architecture arch of trigger is
 	end process;
 	
 	
-	count_1280 <= count_1280_next;
+	count_2560 <= count_2560_next;
 	sample_flag <= '1' when (sample_ready = '0' and sample_ready_reg = '1') else '0';
 	period_clks <= number_of_clocks when computeFrequency = '0';
 

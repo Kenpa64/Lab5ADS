@@ -5,7 +5,7 @@ use IEEE.std_logic_unsigned.all;
 entity sync_ram_dualport is
 generic (
 		data_width : natural := 12;
-		addr_width : natural := 11);
+		addr_width : natural := 12);
 port(
 		clk_in : in std_logic;
 		clk_out : in std_logic;
