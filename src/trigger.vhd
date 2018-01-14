@@ -41,7 +41,7 @@ architecture arch of trigger is
 	signal vsync_reg: std_logic;
 	signal ongoing,process_read: std_logic;
 	signal sample_flag, sample_ready_reg: std_logic;
-	signal computeFrequency: std_logic;
+	signal computeFrequency, sendPeriod: std_logic;
 
 	signal data_end : std_logic; --flag
 	begin 
@@ -179,22 +179,25 @@ architecture arch of trigger is
 			if(reset = '0') then
 				max_data <= (others => '0');
 				min_data <= (others => '1');
-				number_of_clocks <= "000000000";
+				number_of_clocks <= "000000001";
 				computeFrequency <= '0';
+				sendPeriod <= '0';
 			else
 				if(computeFrequency = '0') then
+					sendPeriod <= '0';
 					if (max_data < data1(11 downto 3)) then
 						max_data <= data1(11 downto 3);
-					elsif (max_data > data1(11 downto 3)) then
+					else
 						-- Aprox 10ns per clock period
 						computeFrequency <= '1';
-						number_of_clocks <= "000000000";
+						number_of_clocks <= "000000001";
 					end if;
 				else
 					if(min_data > data1(11 downto 3)) then
 						min_data <= data1(11 downto 3);
 						number_of_clocks <= number_of_clocks + 1;
 					else
+						sendPeriod <= '1';
 						computeFrequency <= '0';
 						max_data <= (others => '0');
 						min_data <= (others => '1');
@@ -229,6 +232,6 @@ architecture arch of trigger is
 	
 	count_2560 <= count_2560_next;
 	sample_flag <= '1' when (sample_ready = '0' and sample_ready_reg = '1') else '0';
-	period_clks <= number_of_clocks when computeFrequency = '0';
+	period_clks <= number_of_clocks when sendPeriod = '1';
 
 end arch;
