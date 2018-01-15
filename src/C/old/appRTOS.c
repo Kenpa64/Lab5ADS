@@ -322,11 +322,8 @@ static  void  AppTask1 (void *p_arg)
 
         //second approach is using interruptions so we are not using at this moment
 
-        //Check if the buttons have been pressed
-
-
-
-        OSTimeDlyHMSM(0, 0, 0, 100,
+        
+        OSTimeDlyHMSM(0, 0, 1, 0,
                       OS_OPT_TIME_HMSM_STRICT,
                      &err);                                     /* Waits for 1 second.                                  */
 

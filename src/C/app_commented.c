@@ -65,7 +65,6 @@
 #include  <ucos_bsp.h>
 #define _OPEN_SYS_ITOA_EXT
 #include <stdlib.h>
-//#include <includes.h>
 #include "xadcps.h"
 #include "xstatus.h"
 #include "stdio.h"
@@ -216,24 +215,27 @@ void  MainTask (void *p_arg)
 
 	OSInit(&err);		/* Initialize uC/OS-III.                                */
 
-
+    //Initialize the XADC peripheral
 	Peripheral_Init();
 
+	//Get temperature from the peripheral
 	temp_raw = XAdcPs_GetAdcData(XAdcInstPtr, XADCPS_CH_TEMP);
 	temp = (int) XAdcPs_RawToTemperature(temp_raw);
 
+	//Set a default threshold
 	thresh = 40;
 
-	//updateTemp(temperature);
-	//updateThreshold(threshold);
-    *((unsigned int *) (XPAR_AXI_GPIO_0_BASEADDR + 0x00000008)) = (alarm<<22)+(temp<<15)+(thresh << 4);
-
-   // decide alarm value
+	// decide alarm value
 	if(temp >= thresh)
 		alarm = 1;
 	else
 		alarm = 0;
-	//updateAlarm(temperature, threshold);
+
+	// write the data and send to the GPIO bus
+    *((unsigned int *) (XPAR_AXI_GPIO_0_BASEADDR + 0x00000008)) = (alarm<<22)+(temp<<15)+(thresh << 4);
+
+   
+    //Create a new task
 
 	OSTaskCreate	((OS_TCB	*)&AppTaskStartTCB,
 					(CPU_CHAR	*)"App Task Start",
@@ -312,7 +314,8 @@ static  void  AppTaskStart (void *p_arg)
 
     AppTaskCreate();                                            /* Create Application tasks                             */
     OSMutexCreate((OS_MUTEX *)&AppMutexPrint, (CPU_CHAR *)"My App. Mutex", (OS_ERR *)&err);
-    //Define three mutexes for three different processes (print and send new info)
+
+    //Define two mutexes(periodical measurement of the temperature and button interrupt)
     OSMutexCreate((OS_MUTEX *)&AppMutexAlarm, (CPU_CHAR *)"My App. Update Alarm", (OS_ERR *)&err);
     OSMutexCreate((OS_MUTEX *)&AppMutexTemp, (CPU_CHAR *)"My App. Update Temp", (OS_ERR *)&err);
 
@@ -346,7 +349,7 @@ static  void  AppTaskCreate (void)
 {
 	OS_ERR  err;
 
-
+	// Button interrupt Task
     OSTaskCreate((OS_TCB     *)&AppTask1TCB,                    /* Create the Task #1.                                  */
                  (CPU_CHAR   *)"Task 1",
                  (OS_TASK_PTR ) AppTask1,
@@ -361,6 +364,7 @@ static  void  AppTaskCreate (void)
                  (OS_OPT      )(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR     *)&err);
 
+    //Temperature measurement task
     OSTaskCreate((OS_TCB     *)&AppTask2TCB,                    /* Create the Task #2.                                  */
                  (CPU_CHAR   *)"Task 2",
                  (OS_TASK_PTR ) AppTask2,
@@ -396,24 +400,25 @@ static  void  AppTask1 (void *p_arg)
 {
 	OS_ERR  err;
 
-	    unsigned int but, new_dataR = 0, old_dataR = 0, new_dataL = 0, old_dataL = 0;/*, numClks, period, frequency*/
-		//char* cPeriod, cFreq;
+	    unsigned int but, new_dataR = 0, old_dataR = 0, new_dataL = 0, old_dataL = 0;
+
 		(void)p_arg;
 
 	    AppPrint("Task #1 Started\r\n");
 
 	    while (1) {                                            		/* Task body, always written as an infinite loop.       */
 	        //Read values from the buttons
-	        //1st approach
-	        but = *((volatile unsigned int*) XPAR_AXI_GPIO_0_BASEADDR); //XPAR_AXI_GPIO_0_BASEADDR?
+	        but = *((volatile unsigned int*) XPAR_AXI_GPIO_0_BASEADDR); 
 	        new_dataR = 0x00000001 & but;
 	        new_dataL= (0x00000002 & but)>>1;
 
-	        //second approach is using interruptions so we are not using at this moment
+	        //Detect the change in the value only 1 time and change the threshold depending on the button
 	        if(new_dataL != old_dataL && new_dataL == 1){
 	            if(thresh > 0){
 	                thresh--;
 	            }
+
+	            // Update the alarm
 	            AppUpdateAlarm();
 	            old_dataL = new_dataL;
 
@@ -424,25 +429,13 @@ static  void  AppTask1 (void *p_arg)
 	            if(thresh < 80){
 	                thresh++;
 	            }
+	            // Update the alarm 
 	            AppUpdateAlarm();
 	            old_dataR = new_dataR;
 
 	        }else if(new_dataR != old_dataR && new_dataR == 0){
 	            old_dataR = new_dataR;
 	        }
-
-			//numClks = (0x000007FC & but)>>2;
-	        /*numClks =XPAR_AXI_GPIO_0_BASEADDR+0x00000001;
-			period = numClks*10;
-			frequency = 1000/period;
-
-			utoa(period,cPeriod,10);
-			utoa(frequency, cFreq,10);
-			AppPrint("Period: ");
-			AppPrint(cPeriod);
-			AppPrint(" ns \nFrequency: ");
-			AppPrint(cFreq);
-			AppPrint(" Mhz \n");*/
 
 
 	        OSTimeDlyHMSM(0, 0, 0, 50,
@@ -479,7 +472,7 @@ static  void  AppTask2 (void *p_arg)
     AppPrint("Task #2 Started\r\n");
 
     while (1) {                                            		/* Task body, always written as an infinite loop.       */
-
+    	// Update the temprature
     	AppUpdateTemp();
         OSTimeDlyHMSM(0, 0, 0, 500,
                       OS_OPT_TIME_HMSM_STRICT,
@@ -522,9 +515,8 @@ static  void  AppPrint (char *str)
 					(OS_OPT )OS_OPT_PEND_BLOCKING,                          /* Block if not available.                              */
 					(CPU_TS *)&ts,                                            /* Timestamp.                                           */
 					(OS_ERR *)&err);
-
+    //Print a string using MUTEX
     UCOS_Print(str);
-    //UCOS_Print("\n"); /* Access the shared resource.                          */
 
                                                                 /* Releases the shared resource.                        */
     OSMutexPost( 	(OS_MUTEX *)&AppMutexPrint,
@@ -543,14 +535,12 @@ static void AppUpdateAlarm() {
                     (CPU_TS *)&ts,                                            /* Timestamp.                                           */
                     (OS_ERR *)&err);
 
+    //Compare the new threshold with the temperature and send the data to the HW
     if(temp > thresh) alarm= 1;
-    else alarm = 0;
-
-    //updateThreshold(threshold);
+    else alarm = 0;    
 
     *((unsigned int *) (XPAR_AXI_GPIO_0_BASEADDR + 0x00000008)) = (alarm<<22)+(temp<<15)+(thresh << 4);
-    //Update alarm
-    //*((unsigned int *) XPAR_AXI_GPIO_0_BASEADDR + 0x0000000A) = alarm;
+
 
     OSMutexPost(    (OS_MUTEX *)&AppMutexAlarm,
                     (OS_OPT )OS_OPT_POST_NONE,                              /* No options.                                          */
@@ -568,17 +558,17 @@ static void AppUpdateTemp() {
                     (CPU_TS *)&ts,                                            /* Timestamp.                                           */
                     (OS_ERR *)&err);
 
-    //Get the new value
+    //Get the new value of temperature
     temp_raw = XAdcPs_GetAdcData(XAdcInstPtr, XADCPS_CH_TEMP);
     temp = (int) XAdcPs_RawToTemperature(temp_raw);
-    //temp = 50;
+
+    //Compare the new threshold with the temperature and send the data to the HW
     if(temp > thresh) alarm= 1;
     else alarm = 0;
 
-    //updateTemp(temperature);
+    
     *((unsigned int *) (XPAR_AXI_GPIO_0_BASEADDR + 0x00000008)) = (alarm<<22)+(temp<<15)+(thresh << 4);
-     //Update alarm
-   // *((unsigned int *) XPAR_AXI_GPIO_0_BASEADDR + 0x0000000A) = alarm;
+
 
     OSMutexPost(    (OS_MUTEX *)&AppMutexTemp,
                     (OS_OPT )OS_OPT_POST_NONE,                              /* No options.                                          */

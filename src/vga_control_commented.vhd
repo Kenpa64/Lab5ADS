@@ -130,6 +130,7 @@ architecture arch of vga_control is
 				addr_out <= (others => '0');
 				data_to_vga <= (others => '0');
 			else
+				-- detection of switch in order to get even indexes of addresses
 				if(sw0_reg1 = '0') then
 					h_add <= (others => '0');
 				else
@@ -140,7 +141,7 @@ architecture arch of vga_control is
 						addr_out <= h_count + 1 + h_add;
 						data_to_vga <= data_out;
 				end if;
-				-- inside the screem
+				-- inside the screen
 				if(v_screen = '1' and h_screen = '1') then
 					-- set output to '0' below the temperature display
 					if(v_count(8 downto 0) = trigger_level and h_count < 20 and v_count < 512 and v_count >=0) then

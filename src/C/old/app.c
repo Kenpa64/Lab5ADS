@@ -36,8 +36,7 @@ XScuGic INTCInst;
 static XGpio butr, butl; /* The Instance of the GPIO Driver */
 int *axi_pointer = (int *) XPAR_VGA_CONTROL_0_S00_AXI_BASEADDR;
 int InterruptFlag; /* Flag used to indicate that an interrupt has occurred */
-int INTR_INT;
-int INTL_INT;
+
 
 
 /*
