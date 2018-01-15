@@ -12,6 +12,7 @@ port(
 	sdata2:	in std_logic;
 	ncs:	out std_logic;
 	sclk:	out std_logic;
+	data1:  out std_logic_vector(11 downto 0);
 	sample_ready:	out std_logic
 	);
 end ADC_control;
@@ -28,7 +29,6 @@ architecture arch of ADC_control is
 
 	-- control variables
 	signal ncs_reg, ncs_reg2: std_logic;
-	signal outleds, outleds_reg: std_logic_vector(7 downto 0);
 	signal lab5var: std_logic;
 
 	-- Data variables
@@ -43,20 +43,18 @@ architecture arch of ADC_control is
 		if(rising_edge(clk)) then
 			if (resetn = '0') then	
 				-- Reset signals
-				outleds <= (others => '0');
+				data1 <= (others => '0');
 				ncs <= '0';
 				sclk <= '0';
-				leds <= (others => '0');
 				
 				-- reset registers
 				ncs_reg <= '0';
 				ncs_reg2 <= '0';
-				outleds_reg <= (others => '0');
 				
 			else
 				-- refresh the output leds value when the lab5var is equal to 1
 				if lab5var = '1' then
-					outleds <= sdata1_vector(11 downto 4);
+					data1 <= sdata1_vector(11 downto 0);
 				end if;
 				
 				-- set the ncs signal to '1' when the counter is in its maximum value (16)
@@ -71,12 +69,9 @@ architecture arch of ADC_control is
 				ncs <= ncs_reg2;
 				
 				sclk <= sclk_reg;
-				
-				outleds_reg <= outleds;
-				leds <= outleds_reg;
 
 				-- Sync input control signals
-				sdata1_reg	 <= sdata1;
+				sdata1_reg	<= sdata1;
 				sdata1_reg2 <= sdata1_reg;
 
 				sdata2_reg <= sdata2;

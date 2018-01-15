@@ -396,8 +396,8 @@ static  void  AppTask1 (void *p_arg)
 {
 	OS_ERR  err;
 
-	    unsigned int but, new_dataR = 0, old_dataR = 0, new_dataL = 0, old_dataL = 0, numClks, period, frequency;
-		char* cPeriod, cFreq;
+	    unsigned int but, new_dataR = 0, old_dataR = 0, new_dataL = 0, old_dataL = 0;/*, numClks, period, frequency*/
+		//char* cPeriod, cFreq;
 		(void)p_arg;
 
 	    AppPrint("Task #1 Started\r\n");
@@ -431,16 +431,18 @@ static  void  AppTask1 (void *p_arg)
 	            old_dataR = new_dataR;
 	        }
 
-			numClks = (0x000007FC & but)>>2;
+			//numClks = (0x000007FC & but)>>2;
+	        /*numClks =XPAR_AXI_GPIO_0_BASEADDR+0x00000001;
 			period = numClks*10;
 			frequency = 1000/period;
 
-			//char * utoa(unsigned int n, char * buffer, int radix);
-
 			utoa(period,cPeriod,10);
 			utoa(frequency, cFreq,10);
+			AppPrint("Period: ");
 			AppPrint(cPeriod);
+			AppPrint(" ns \nFrequency: ");
 			AppPrint(cFreq);
+			AppPrint(" Mhz \n");*/
 
 
 	        OSTimeDlyHMSM(0, 0, 0, 50,
@@ -522,7 +524,7 @@ static  void  AppPrint (char *str)
 					(OS_ERR *)&err);
 
     UCOS_Print(str);
-    UCOS_Print("\n"); /* Access the shared resource.                          */
+    //UCOS_Print("\n"); /* Access the shared resource.                          */
 
                                                                 /* Releases the shared resource.                        */
     OSMutexPost( 	(OS_MUTEX *)&AppMutexPrint,

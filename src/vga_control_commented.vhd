@@ -46,13 +46,17 @@ architecture arch of vga_control is
 	signal vsync_reg: std_logic;
 	signal hsync_reg: std_logic;
 
+	-- Additional varibles for project, doubling the horizontal length
 	signal sw0_reg, sw0_reg1: std_logic;
 	signal h_add: std_logic_vector(11 downto 0);
     
+    -- Output colours vectors
 	signal output_colour: std_logic_vector(11 downto 0);
 
+	-- Data from memory ready to represent
 	signal data_to_vga: std_logic_vector(11 downto 0);
 	
+	-- Temperatura variables
 	signal t_temperature: std_logic_vector(10 downto 0);
 	signal temperature: std_logic_vector(10 downto 0);
 	signal alarm: std_logic;
@@ -116,11 +120,10 @@ architecture arch of vga_control is
         end if;
 	end process;
     
-    -- VGA pattern and mode selector process
+    -- VGA representation
 	signalgen: process (clk, reset)
 		begin
-        if(clk'event and clk = '1') then
-			--if (reset = '1' or v_end = '1')  then 
+        if(clk'event and clk = '1') then 
 			if (reset = '1' or v_end = '1')  then 
                 -- force the output colour to all '0' when the frame ends or the system resets
 				output_colour <= (others => '0');
@@ -132,21 +135,22 @@ architecture arch of vga_control is
 				else
 					h_add <= h_count + 2;
 				end if;
-				--if(h_count < 1279 and h_count >= -1 and v_count < 512) then
+				-- Read from memory
 				if(h_count < 1279 and h_count >= -1 and v_count < 512 and v_count >=0) then
 						addr_out <= h_count + 1 + h_add;
 						data_to_vga <= data_out;
 				end if;
+				-- inside the screem
 				if(v_screen = '1' and h_screen = '1') then
 					-- set output to '0' below the temperature display
-					-- if(v_count(8 downto 0) = trigger_level and h_count < 20 and v_count < 512) then
 					if(v_count(8 downto 0) = trigger_level and h_count < 20 and v_count < 512 and v_count >=0) then
 						output_colour <= "000000001111";
 					else
-						--if(data_out(11 downto 3) = v_count(8 downto 0) and alarm = '0' and v_count < 512) then
+						-- Detect point in the detected signal
 						if(data_out(11 downto 3) = v_count(8 downto 0) and alarm = '0' and v_count < 512 and v_count >= 0) then
 							output_colour <= "111111110000";
 						else
+							-- Represent temperature bar
 							if(count_1066 >= (538 + VBP + offset) and count_1066 <= (573 + VBP + offset)) then
 								if(h_count = t_temperature) then
 									output_colour <= "000000001111" ;
@@ -191,8 +195,7 @@ architecture arch of vga_control is
 	h_screen <= '1' when (count_1688 > HBP and count_1688 <= HBP+1280) else '0';
 	v_screen <= '1' when (count_1066 > VBP and count_1066 <= VBP+1024) else '0';
 
-	--Substraction count to get a value refered to start of display, can be negative
-	--v_count <= count_1066 - VBP;
+	-- Substraction count to get a value refered to start of display, can be negative
 	v_count <= count_1066 - VBP - offset;
 	h_count <= count_1688 - HBP;
 	
@@ -200,4 +203,5 @@ architecture arch of vga_control is
 	alarm <= gpio_in(22);
 	temperature <= gpio_in(21 downto 11);
 	t_temperature <= gpio_in(10 downto 0);
+
 end arch;

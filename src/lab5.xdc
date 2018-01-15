@@ -20,7 +20,7 @@ set_property PACKAGE_PIN R16 [get_ports {trigger_down}];# "BTND"
 set_property PACKAGE_PIN N15 [get_ports {temp_down}];  	# "BTNL"
 set_property PACKAGE_PIN R18 [get_ports {temp_up}];  	# "BTNR"
 set_property PACKAGE_PIN T18 [get_ports {trigger_up}];  # "BTNU"
-set_property PACKAGE_PIN F22 [get_ports {SW0}];  # "SW0"
+set_property PACKAGE_PIN F22 [get_ports {sw0}];  # "SW0"
 
 # ----------------------------------------------------------------------------
 # IOSTANDARD Constraints

@@ -419,7 +419,7 @@ begin
         reset => reset_vga,
         trigger_level => trigger_level,
         gpio_in => gpio_in,
-        sw0 <= sw0,
+        sw0 => sw0,
         addr_out => addr_out,
         data_out => data_out,
         hsync => hsync,

@@ -6,7 +6,6 @@ use ieee.std_logic_unsigned.all;
 
 entity trigger is
 port(
-	-- vsync in? the system will read only when retrace, vsync = '0'
 	vsync: in std_logic;
 	sample_ready:	in std_logic; -- I think is ncs, thus, the system will read the ADC when sample_ready = '1'
 	clk:	in std_logic;
@@ -18,19 +17,17 @@ port(
 	we:	out std_logic;
 	addr_in:	out std_logic_vector(11 downto 0);
 	data_in:	out std_logic_vector(11 downto 0);
-	trigger_level:	out std_logic_vector(8 downto 0);
-	period_clks: out std_logic_vector(8 downto 0)
+	trigger_level:	out std_logic_vector(8 downto 0)
 	);
 end trigger;
 
 architecture arch of trigger is
-	--constant default_value: integer:= 256; --100000000, I don't know if we could not use this signal
+
+	-- trigger signals including their registers
 	signal actual_trigger: std_logic_vector(8 downto 0):= "100000000";
 	signal last_data1: std_logic_vector(3 downto 0);
 	signal trigger_unit: std_logic_vector(4 downto 0):= "10000";
 	signal trigger_slope: std_logic;
-	signal min_data, max_data, number_of_clocks: std_logic_vector(8 downto 0); 
-	--registers init
 	signal trigger_up_sync, trigger_up_sync2, trigger_up_sync3: std_logic;
 	signal trigger_down_sync, trigger_down_sync2, trigger_down_sync3: std_logic;
 	signal trigger_n_p_sync, trigger_n_p_sync2, trigger_n_p_sync3: std_logic;
@@ -41,9 +38,9 @@ architecture arch of trigger is
 	signal vsync_reg: std_logic;
 	signal ongoing,process_read: std_logic;
 	signal sample_flag, sample_ready_reg: std_logic;
-	signal computeFrequency, sendPeriod: std_logic;
 
-	signal data_end : std_logic; --flag
+	signal data_end : std_logic;
+
 	begin 
 	sync: process(clk, reset)
 	begin
@@ -55,7 +52,6 @@ architecture arch of trigger is
 				trigger_n_p_sync <= '0';
 				trigger_level_reg <= (others => '0');
 				data_end <= '0';
-				
 			else
 				trigger_up_sync <= trigger_up;
 				trigger_up_sync2 <= trigger_up_sync;
@@ -70,7 +66,8 @@ architecture arch of trigger is
 				trigger_level <= actual_trigger;
 				
 				sample_ready_reg <= sample_ready;
-				-- 2 registers?
+
+				-- Edge detection
 				vsync_reg <= vsync;
 			end if;
 		end if;
@@ -86,7 +83,6 @@ architecture arch of trigger is
 				trigger_slope <= '1';
 			else
 				-- falling edge detection
-				-- TODO: edge detection well done
 				if(trigger_up_sync3 = '0' and trigger_up_sync2 = '1' and actual_trigger > trigger_unit) then
 					actual_trigger <= actual_trigger - trigger_unit;
 				end if;
@@ -120,13 +116,9 @@ architecture arch of trigger is
 	counter1280: process (clk, reset)
 		begin
         if (clk'event and clk = '1') then
-            --if (reset = '0' or count_1280 = 1279) then
-                --count_1280_next <= (others => '0');
 			if (reset = '0') then
             else
-                -- it resets when the line ends, if not it increases in 1
                 if (sample_ready = '1' and ongoing = '1' and process_read = '1') then
-				--if (process_read = '1' and sample_flag = '1') then
 					if(count_2560 = 2560) then 
 						count_2560_next <= (others => '0');
 						data_end <= '1';
@@ -147,13 +139,16 @@ architecture arch of trigger is
 				last_data1 <= (others => '0');
 				process_read <= '0';
 			else
+				-- Starting the read process
 				if(sample_ready = '1' and ongoing = '1') then
 					if(process_read = '0') then
+						-- If negative slope
 						if(trigger_slope = '0') then
 							if((data1(11 downto 3) = actual_trigger) and (last_data1 > data1(11 downto 8))) then
 								data1_value <= data1;
 								process_read <= '1';
 							end if;
+						-- If positive slope
 						elsif(trigger_slope = '1') then
 							if((data1(11 downto 3) = actual_trigger) and (last_data1 < data1(11 downto 8))) then
 								data1_value <= data1;
@@ -161,47 +156,13 @@ architecture arch of trigger is
 							end if;
 						end if;
 					else
+						-- Reads until 2560 where the memory will be full of our data
 						data1_value <= data1;
 						if (count_2560 = 2560) then
 							process_read <= '0';
 						end if;
 					end if;
 					last_data1 <= data1(11 downto 8);
-				end if;
-			end if;
-		end if;
-	end process;
-
-	-- Frequency/Period estimator
-	frequencyEstimator: process(clk, reset)
-	begin
-		if(clk'event and clk = '1') then
-			if(reset = '0') then
-				max_data <= (others => '0');
-				min_data <= (others => '1');
-				number_of_clocks <= "000000001";
-				computeFrequency <= '0';
-				sendPeriod <= '0';
-			else
-				if(computeFrequency = '0') then
-					sendPeriod <= '0';
-					if (max_data < data1(11 downto 3)) then
-						max_data <= data1(11 downto 3);
-					else
-						-- Aprox 10ns per clock period
-						computeFrequency <= '1';
-						number_of_clocks <= "000000001";
-					end if;
-				else
-					if(min_data > data1(11 downto 3)) then
-						min_data <= data1(11 downto 3);
-						number_of_clocks <= number_of_clocks + 1;
-					else
-						sendPeriod <= '1';
-						computeFrequency <= '0';
-						max_data <= (others => '0');
-						min_data <= (others => '1');
-					end if;
 				end if;
 			end if;
 		end if;
@@ -216,12 +177,10 @@ architecture arch of trigger is
 				addr_in <= (others => '0');
 				data_in <= (others => '0');
 			else
-				--if(sample_flag = '1' and ongoing = '1' and process_read = '1') then
 				if(sample_flag = '1' and process_read = '1') then
 					we <= '1';
 					addr_in <= count_2560 - 1;
 					data_in <= data1_value;
-					--data_in <= data1;
 				else
 					we <= '0';
 				end if;
@@ -229,9 +188,7 @@ architecture arch of trigger is
 		end if;
 	end process;
 	
-	
 	count_2560 <= count_2560_next;
 	sample_flag <= '1' when (sample_ready = '0' and sample_ready_reg = '1') else '0';
-	period_clks <= number_of_clocks when sendPeriod = '1';
 
 end arch;

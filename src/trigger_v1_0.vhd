@@ -25,7 +25,7 @@ entity trigger_v1_0 is
         data1: in std_logic_vector(11 downto 0);
         vsync: in std_logic;
         we: out std_logic;
-        addr_in: out std_logic_vector(10 downto 0);
+        addr_in: out std_logic_vector(11 downto 0);
         data_in: out std_logic_vector(11 downto 0);
         trigger_level: out std_logic_vector(8 downto 0);
         period_clks: out std_logic_vector(8 downto 0);
@@ -74,7 +74,7 @@ architecture arch_imp of trigger_v1_0 is
         data1: in std_logic_vector(11 downto 0);
         vsync: in std_logic;
         we: out std_logic;
-        addr_in: out std_logic_vector(10 downto 0);
+        addr_in: out std_logic_vector(11 downto 0);
         data_in: out std_logic_vector(11 downto 0);
         trigger_level: out std_logic_vector(8 downto 0);
         period_clks: out std_logic_vector(8 downto 0);

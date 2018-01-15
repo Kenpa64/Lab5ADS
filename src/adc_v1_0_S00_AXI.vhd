@@ -20,7 +20,8 @@ entity adc_v1_0_S00_AXI is
          sdata2: in std_logic;
          ncs: out std_logic;
          sclk: out std_logic;
-         leds: out std_logic_vector(7 downto 0);
+         sample_ready:	out std_logic;
+		 data1:	out std_logic_vector(11 downto 0);
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -96,7 +97,8 @@ architecture arch_imp of adc_v1_0_S00_AXI is
         sdata2:    in std_logic;
         ncs:    out std_logic;
         sclk:    out std_logic;
-        leds:    out std_logic_vector(7 downto 0)
+		data1:	out std_logic_vector(11 downto 0);
+        sample_ready:	out std_logic
     );
     end component;
     
@@ -410,7 +412,8 @@ begin
         sdata2  => sdata2,
         ncs => ncs,
         sclk => sclk,
-        leds => leds
+		data1 => data1,
+        sample_ready => sample_ready
     );
 	-- User logic ends
 
