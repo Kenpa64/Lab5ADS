@@ -20,9 +20,9 @@ end;
 
 architecture loquequierasmedaigual of portMap is
 
-signal sample_ready, we, clk_in, clk_out, reset: std_logic;
+signal sample_ready, we, clk_in, clk_out, reset, vsync_trigger: std_logic;
 signal data1, addr_in, addr_out, data_in, data_out: std_logic_vector(11 downto 0);
-signal trigger_level, period_clks: std_logic_vector(8 downto 0);
+signal trigger_level: std_logic_vector(8 downto 0);
 
 component trigger
 	port(
@@ -38,8 +38,7 @@ component trigger
 		we:	out std_logic;
 		addr_in:	out std_logic_vector(11 downto 0);
 		data_in:	out std_logic_vector(11 downto 0);
-		trigger_level:	out std_logic_vector(8 downto 0);
-		period_clks: out std_logic_vector(8 downto 0)
+		trigger_level:	out std_logic_vector(8 downto 0)
 	);
 end component;
 
@@ -56,6 +55,7 @@ port(
 	red:	out std_logic_vector(3 downto 0);
 	green:	out std_logic_vector(3 downto 0);
 	blue:	out std_logic_vector(3 downto 0);
+	vsync_trigger: out std_logic;
 	addr_out: out std_logic_vector(11 downto 0)
 	);
 end component;
@@ -90,8 +90,8 @@ begin
  -- vsyncout <= vsync;
  -- vsync <= vsyncin;
   G1: vga_control port map (data_out => data_out, trigger_level=> trigger_level, clk=> clk, reset => resetVGA, gpio_in => gpio_in, 
-  sw0=>sw0, vsync=> vsync, hsync=>hsync, red=>red, green=>green, blue=>blue, addr_out=>addr_out);
-  G2: trigger port map (vsync => vsync, sample_ready=>sample_ready, clk=>clk, reset=>resetn, trigger_up=>trigger_up, 
+  sw0=>sw0, vsync=> vsync, vsync_trigger => vsync_trigger, hsync=>hsync, red=>red, green=>green, blue=>blue, addr_out=>addr_out);
+  G2: trigger port map (vsync => vsync_trigger, sample_ready=>sample_ready, clk=>clk, reset=>resetn, trigger_up=>trigger_up, 
   trigger_down=>trigger_down, trigger_n_p=>trigger_n_p, data1=>data1, we=>we, addr_in=>addr_in, data_in=>data_in, trigger_level=>trigger_level, 
   period_clks=>period_clks);
   G3: ADC_control port map(clk=>clk, resetn=>resetn, sdata1=>sdata1, sdata2=>sdata2, ncs=>ncs, sclk=>sclk, data1=>data1, sample_ready=>sample_ready);

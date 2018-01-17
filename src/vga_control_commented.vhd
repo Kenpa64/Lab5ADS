@@ -13,6 +13,7 @@ port(
 	gpio_in: in std_logic_vector(22 downto 0);
 	sw0: in std_logic;
 	vsync:	out std_logic;
+	vsync_trigger: out std_logic;
 	hsync:	out std_logic;
 	red:	out std_logic_vector(3 downto 0);
 	green:	out std_logic_vector(3 downto 0);
@@ -71,6 +72,7 @@ architecture arch of vga_control is
                 -- All the signals are reseted in the processes below
             else
     			vsync <= vsync_reg;
+    			vsync_trigger <= vsync_reg;
     			hsync <= hsync_reg;
 
     			sw0_reg <= sw0;
